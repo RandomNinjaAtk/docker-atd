@@ -27,7 +27,7 @@ RUN \
 		yq \
 		mutagen \
 		r128gain \
-		tidal-dl && \
+		tidal-dl
  
 
 # copy local files
