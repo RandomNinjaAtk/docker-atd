@@ -29,9 +29,5 @@ RUN \
 		r128gain \
 		tidal-dl
  
-
-# copy local files
-COPY root/ /
-
 # set work directory
 WORKDIR /config
