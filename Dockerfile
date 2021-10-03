@@ -27,6 +27,7 @@ RUN \
 		yq \
 		mutagen \
 		r128gain \
+		qtfaststart \
 		tidal-dl
  
 # copy local files
