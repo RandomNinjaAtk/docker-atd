@@ -48,3 +48,51 @@ To execute script from CLI, do the following:<br/>
 `docker exec -it atd /bin/bash`<br/>
 `bash /config/scripts/video.sh`
 
+## Usage
+
+Here are some example snippets to help you get started creating a container.
+
+### docker
+
+```
+docker create \
+  --name=atd \
+  -v /path/to/config/files:/config \
+  -v /path/to/downloads:/downloads-atd \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e AutoStart=true \
+  -e ScriptInterval=1h \
+  -e LidarrUrl=http://x.x.x.x:8686 \
+  -e LidarrApiKey=LIDARRAPI \
+  -e MusicbrainzMirror=https://musicbrainz.org \
+  -e MusicbrainzRateLimit=1 \ 
+  --restart unless-stopped \
+  randomninjaatk/amd 
+```
+
+
+### docker-compose
+
+Compatible with docker-compose v2 schemas.
+
+```
+version: "2.1"
+services:
+  amd:
+    image: randomninjaatk/atd 
+    container_name: atd
+    volumes:
+      - /path/to/config/files:/config
+      - /path/to/downloads:/downloads-atd
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - AutoStart=true
+      - ScriptInterval=1h
+      - LidarrUrl=http://x.x.x.x:8686
+      - LidarrApiKey=LIDARRAPI
+      - MusicbrainzMirror=https://musicbrainz.org
+      - MusicbrainzRateLimit=1
+    restart: unless-stopped
+```
