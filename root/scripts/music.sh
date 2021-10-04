@@ -158,6 +158,23 @@ log () {
     echo $m_time" "$1
 }
 
+SelfTest () {
+	log "SELF TEST :: PERFORMING DL CLIENT TEST"
+	tidal-dl -l "https://tidal.com/browse/track/234794"
+	if find $DownloadLocation/Album -type f -iname "*.m4a" | read; then
+		log "SELF TEST :: SUCCESS"
+		if [ -d $DownloadLocation/Album ]; then
+			rm -rf $DownloadLocation/Album
+		fi
+	else
+		if [ -d $DownloadLocation/Album ]; then
+			rm -rf $DownloadLocation/Album
+		fi
+		log "ERROR :: Download unsuccessful, fix tidal-dl"
+		exit
+	fi
+}
+
 LidarrConnection () {
 
 	lidarrdata=$(curl -s --header "X-Api-Key:"${LidarrApiKey} --request GET  "$LidarrUrl/api/v1/Artist/")
@@ -203,6 +220,7 @@ LidarrConnection () {
         if [ -f "/config/logs/error/$sanitizedartistname.log" ]; then        
             rm "/config/logs/error/$sanitizedartistname.log"
         fi
+		SelfTest
         log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
 		logheader="$artistnumber of $artisttotal"
 		artist_id=$tidalartistid
