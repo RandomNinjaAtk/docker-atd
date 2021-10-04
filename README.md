@@ -68,7 +68,7 @@ docker create \
   -e MusicbrainzMirror=https://musicbrainz.org \
   -e MusicbrainzRateLimit=1 \ 
   --restart unless-stopped \
-  randomninjaatk/amd 
+  randomninjaatk/atd 
 ```
 
 
