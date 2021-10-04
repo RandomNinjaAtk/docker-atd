@@ -32,11 +32,19 @@ Container images are configured using parameters passed at runtime (such as thos
 | --- | --- |
 | `-e PUID=1000` | for UserID - see below for explanation |
 | `-e PGID=1000` | for GroupID - see below for explanation |
-| `-v /config` | Configuration files for AMA |
+| `-v /config` | Configuration files for ATD |
 | `-v /downloads-atd` | Downloaded library location |
 | `-e AutoStart=true` | true = Enabled :: Runs script automatically on startup |
 | `-e ScriptInterval=15m` | #s or #m or #h or #d :: s = seconds, m = minutes, h = hours, d = days :: Amount of time between each script run, when AUTOSTART is enabled|
-| `-e LidarrUrl=http://x.x.x.x:8686` | ONLY used if Lidarr List Import is enabled... |
-| `-e LidarrApiKey=08d108d108d108d108d108d108d108d1` | ONLY used if Lidarr List Import is enabled... |
+| `-e LidarrUrl=http://x.x.x.x:8686` | REQUIRED: Lidarr URL, Lidarr provides artist list for processing with ATD... |
+| `-e LidarrApiKey=08d108d108d108d108d108d108d108d1` | REQUIRED: Lidarr API Key, enables ATD to connect to Lidarr... |
 | `-e MusicbrainzMirror=https://musicbrainz.org` | OPTIONAL :: Only change if using a different mirror |
 | `-e MusicbrainzRateLimit=1` | OPTIONAL: musicbrainz rate limit, musicbrainz allows only 1 connection per second, max setting is 10 :: Set to 101 to disable limit |
+
+## Instructions
+
+Only videos work at this time.<br/>
+To execute script from CLI, do the following:<br/>
+`docker exec -it atd /bin/bash`<br/>
+`bash /config/scripts/video.sh`
+
