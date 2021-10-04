@@ -426,7 +426,7 @@ LidarrConnection () {
 				genre="${genre,,}"
 				genre="$(echo "$genre" | sed -E 's/(\w)(\w*)/\U\1\L\2/g')"
 				
-				python3 $SCRIPT_DIR/video_tag.py \
+				python3 $SCRIPT_DIR/tag_video.py \
 					--file "$file" \
 					--songtitle "$title${version}" \
 					--songalbum "$album_title" \
