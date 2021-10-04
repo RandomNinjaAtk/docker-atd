@@ -1,4 +1,4 @@
-# ATD - Automated Tidal Downlaoder
+# ATD - Automated Tidal Downloader
 [![Docker Build](https://img.shields.io/docker/cloud/automated/randomninjaatk/atd?style=flat-square)](https://hub.docker.com/r/randomninjaatk/atd)
 [![Docker Pulls](https://img.shields.io/docker/pulls/randomninjaatk/atd?style=flat-square)](https://hub.docker.com/r/randomninjaatk/atd)
 [![Docker Stars](https://img.shields.io/docker/stars/randomninjaatk/atd?style=flat-square)](https://hub.docker.com/r/randomninjaatk/atd)
