@@ -40,6 +40,7 @@ Container images are configured using parameters passed at runtime (such as thos
 | `-e LidarrApiKey=08d108d108d108d108d108d108d108d1` | REQUIRED: Lidarr API Key, enables ATD to connect to Lidarr... |
 | `-e MusicbrainzMirror=https://musicbrainz.org` | OPTIONAL :: Only change if using a different mirror |
 | `-e MusicbrainzRateLimit=1` | OPTIONAL: musicbrainz rate limit, musicbrainz allows only 1 connection per second, max setting is 10 :: Set to 101 to disable limit |
+| `-e ScriptMode=both` | REQUIRED: set to: music or video or both :: both downloads music and videos, the others set the download to the desired media type |
 
 ## Instructions
 
@@ -66,7 +67,8 @@ docker create \
   -e LidarrUrl=http://x.x.x.x:8686 \
   -e LidarrApiKey=LIDARRAPI \
   -e MusicbrainzMirror=https://musicbrainz.org \
-  -e MusicbrainzRateLimit=1 \ 
+  -e MusicbrainzRateLimit=1 \
+  -e ScriptMode=both \
   --restart unless-stopped \
   randomninjaatk/atd 
 ```
@@ -94,5 +96,6 @@ services:
       - LidarrApiKey=LIDARRAPI
       - MusicbrainzMirror=https://musicbrainz.org
       - MusicbrainzRateLimit=1
+      - ScriptMode=both
     restart: unless-stopped
 ```
