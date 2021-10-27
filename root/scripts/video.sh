@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.02"
+	log "############# SCRIPT VERSION 1.0.03"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -601,8 +601,8 @@ LidarrConnection () {
 							artist_name="${artists_names[$name]}"
 							echo "	<artist>$artist_name</artist>" >> "$nfo"
 						done
-						if [ -f "/$destination/$clean_title${clean_version} ($videoid).jpg" ]; then
-							echo "	<thumb>/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg</thumb>" >> "$nfo"
+						if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
+							echo "	<thumb>$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg</thumb>" >> "$nfo"
 						else
 							echo "	<thumb/>" >> "$nfo"
 						fi
