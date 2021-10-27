@@ -1,6 +1,6 @@
 [downloads]
 # Folder where tracks are downloaded to
-folder = "/downloads-atd"
+folder = "/downloads-atd/temp"
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
 
