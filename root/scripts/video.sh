@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.03"
+	log "############# SCRIPT VERSION 1.0.04"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -400,7 +400,20 @@ LidarrConnection () {
             if [ -d "$DownloadLocation/temp" ]; then
                 rm -rf "$DownloadLocation/temp"
             fi
-            rip url "https://tidal.com/browse/video/$videoid"
+			
+			# Video Contributers
+			VideoContributers=""
+			VideoDirectors=""
+			VideoDirector=""
+			VideoPublishers=""
+			VideoPublisher=""
+			VideoContributers=$(curl -s "https://listen.tidal.com/v1/videos/$videoid/contributors?limit=100&countryCode=US&locale=en_US&deviceType=BROWSER" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+			OLDIFS="$IFS"
+			IFS=$'\n'
+			VideoDirectors=($(echo $VideoContributers | jq -r '.items[] | select(.role=="Video Director") | .name'))
+			VideoPublishers=($(echo $VideoContributers | jq -r '.items[] | select(.role=="Music Publisher") | .name'))
+			IFS="$OLDIFS"
+		    rip url "https://tidal.com/browse/video/$videoid"
             find "$DownloadLocation" -type f -iname "*.mp4" -newer "temp" -print0 | while IFS= read -r -d '' video; do
                 count=$(($count+1))
                 file="${video}"
@@ -584,10 +597,16 @@ LidarrConnection () {
 						fi
 						echo "	<album>Music Videos</album>" >> "$nfo"
 						echo "	<plot/>" >> "$nfo"
-						echo "	<director/>" >> "$nfo"
+						for name in ${!VideoDirectors[@]}; do
+							VideoDirector="${VideoDirectors[$name]}"
+							echo "	<director>$VideoDirector</director>" >> "$nfo"
+						done
 						echo "	<premiered>$release_date</premiered>" >> "$nfo"
 						echo "	<year>$release_year</year>" >> "$nfo"
-						echo "	<studio/>" >> "$nfo"
+						for name in ${!VideoPublishers[@]}; do
+							VideoPublisher="${VideoPublishers[$name]}"
+							echo "	<studio>$VideoPublisher</studio>" >> "$nfo"
+						done
 						OLDIFS="$IFS"
 						IFS=$'\n'
 						artistgenres=($(echo "$mbzartistinfo" | jq -r ".genres[].name"))
