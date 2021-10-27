@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.01"
+	log "############# SCRIPT VERSION 1.0.02"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -34,47 +34,93 @@ Configuration () {
 	fi
 
 
-    if [ ! -f /root/.tidal-dl.json ]; then
-        log "TIDAL :: No default config found, importing default config \"tidal.json\""
-        if [ -f $SCRIPT_DIR/tidal-dl.json ]; then
-            cp $SCRIPT_DIR/tidal-dl.json /root/.tidal-dl.json
-            chmod 777 -R /root
-        fi
-        tidal-dl -o /downloads-atd
-        tidal-dl -r P1080
-		tidal-dl -q HiFi
-    fi
+    # if [ ! -f /root/.tidal-dl.json ]; then
+    #    log "TIDAL :: No default config found, importing default config \"tidal.json\""
+    #   if [ -f $SCRIPT_DIR/tidal-dl.json ]; then
+    #        cp $SCRIPT_DIR/tidal-dl.json /root/.tidal-dl.json
+    #        chmod 777 -R /root
+    #    fi
+    #    tidal-dl -o /downloads-atd
+    #   tidal-dl -r P1080
+	#	tidal-dl -q HiFi
+    #fi
+
 	# check for backup token and use it if exists
-	if [ ! -f /root/.tidal-dl.token.json ]; then
-		if [ -f /config/backup/tidal-dl.token.json ]; then
-			cp -p /config/backup/tidal-dl.token.json /root/.tidal-dl.token.json
-			# remove backup token
-			rm /config/backup/tidal-dl.token.json
+	#if [ ! -f /root/.tidal-dl.token.json ]; then
+	#	if [ -f /config/backup/tidal-dl.token.json ]; then
+	#		cp -p /config/backup/tidal-dl.token.json /root/.tidal-dl.token.json
+	#		# remove backup token
+	#		rm /config/backup/tidal-dl.token.json
+	#	fi
+	#fi
+
+	#if [ -f /root/.tidal-dl.token.json ]; then
+	#	if [[ $(find "/root/.tidal-dl.token.json" -mtime +6 -print) ]]; then
+	#		log "TIDAL :: ERROR :: Token expired, removing..."
+	#		rm /root/.tidal-dl.token.json
+	#	else
+	#		# create backup of token to allow for container updates
+	#		if [ ! -d /config/backup ]; then
+	#			mkdir -p /config/backup
+	#		fi
+	#		cp -p /root/.tidal-dl.token.json /config/backup/tidal-dl.token.json
+	#	fi
+	#fi
+
+    #if [ ! -f /root/.tidal-dl.token.json ]; then
+    #    log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
+    #    tidal-dl
+    #fi
+
+	#if [ ! -f /root/.tidal-dl.token.json ]; then
+    #    log "TIDAL :: ERROR :: Please run tidal-dl from CLI and authenticate the client, then exit the client..."
+    #    error=1
+    #fi
+
+	
+	
+
+	# create streamrip config directory if missing
+	if [ ! -d "/root/.config/streamrip" ]; then
+		mkdir -p "/root/.config/streamrip"
+		# check for backup token and use it if exists
+		if [ ! -f /root/.config/streamrip/config.toml ]; then
+			if [ -f /config/backup/streamrip_config.toml ]; then
+				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
+				# remove backup token
+				rm /config/backup/streamrip_config.toml 
+			fi
+		else
+			log "TIDAL :: No default config found, importing default config \"tidal.json\""
+			if [ -f $SCRIPT_DIR/streamrip_config.toml ]; then
+				cp $SCRIPT_DIR/streamrip_config.toml /root/.config/streamrip/config.toml
+				chmod 777 -R /root
+			fi
 		fi
 	fi
+	
+	TokenCheck=$(cat /root/.config/streamrip/config.toml | grep token_expiry | wc -m)
+	if [ $TokenCheck == 18 ]; then
+		log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
+		rip config --tidal
+	fi
 
-	if [ -f /root/.tidal-dl.token.json ]; then
-		if [[ $(find "/root/.tidal-dl.token.json" -mtime +6 -print) ]]; then
+	if [ -f /root/.config/streamrip/config.toml ]; then
+		if [[ $(find "/root/.config/streamrip/config.toml" -mtime +6 -print) ]]; then
 			log "TIDAL :: ERROR :: Token expired, removing..."
-			rm /root/.tidal-dl.token.json
+			rip config --tidal
 		else
 			# create backup of token to allow for container updates
 			if [ ! -d /config/backup ]; then
 				mkdir -p /config/backup
 			fi
-			cp -p /root/.tidal-dl.token.json /config/backup/tidal-dl.token.json
+			cp -p /root/.config/streamrip/config.toml /config/backup/streamrip_config.toml
 		fi
 	fi
 
-    if [ ! -f /root/.tidal-dl.token.json ]; then
-        log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
-        tidal-dl
-    fi
-
-	if [ ! -f /root/.tidal-dl.token.json ]; then
-        log "TIDAL :: ERROR :: Please run tidal-dl from CLI and authenticate the client, then exit the client..."
-        error=1
-    fi
+	
+	
+	
 
 	# check for MusicbrainzMirror setting, if not set, set to default
 	if [ -z "$MusicbrainzMirror" ]; then
@@ -351,10 +397,10 @@ LidarrConnection () {
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Sending to Download Client..."
             fi
             touch temp
-            if [ -d "$DownloadLocation/Video" ]; then
-                rm -rf "$DownloadLocation/Video"
+            if [ -d "$DownloadLocation/temp" ]; then
+                rm -rf "$DownloadLocation/temp"
             fi
-            tidal-dl -l "https://tidal.com/browse/video/$videoid"
+            rip url "https://tidal.com/browse/video/$videoid"
             find "$DownloadLocation" -type f -iname "*.mp4" -newer "temp" -print0 | while IFS= read -r -d '' video; do
                 count=$(($count+1))
                 file="${video}"
@@ -389,19 +435,19 @@ LidarrConnection () {
 				fi
 
 				if [ "$thumb" != "null" ]; then
-					curl -s "$thumb" -o "$DownloadLocation/Video/thumb.jpg"
+					curl -s "$thumb" -o "$DownloadLocation/temp/thumb.jpg"
 				else
 					ffmpeg -y \
 						-i "$file" \
 						-vframes 1 -an -s 640x360 -ss 30 \
-						"$DownloadLocation/Video/thumb.jpg" &> /dev/null
+						"$DownloadLocation/temp/thumb.jpg" &> /dev/null
 				fi
 
-				mv "$file" "$DownloadLocation/Video/temp.mp4"
-				cp "$DownloadLocation/Video/thumb.jpg" "$DownloadLocation/Video/cover.jpg"
+				mv "$file" "$DownloadLocation/temp/temp.mp4"
+				cp "$DownloadLocation/temp/thumb.jpg" "$DownloadLocation/temp/cover.jpg"
 				log "========================START FFMPEG========================"
 				ffmpeg -y \
-					-i "$DownloadLocation/Video/temp.mp4" \
+					-i "$DownloadLocation/temp/temp.mp4" \
 					-map 0:v \
 					-map 0:a \
 					-c copy \
@@ -437,8 +483,8 @@ LidarrConnection () {
 					--songgenre "$genre" \
 					--songdate "$release_year" \
 					--quality "$videoquality" \
-					--songartwork "$DownloadLocation/Video/cover.jpg"
-				rm "$DownloadLocation/Video/temp.mp4"
+					--songartwork "$DownloadLocation/temp/cover.jpg"
+				rm "$DownloadLocation/temp/temp.mp4"
 				
 				if [ ! -d "$destination" ]; then
 					mkdir -p "$destination"
@@ -447,7 +493,7 @@ LidarrConnection () {
 				fi
 				
                 mv "$file" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
-				cp "$DownloadLocation/Video/cover.jpg" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
+				cp "$DownloadLocation/temp/cover.jpg" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
 				if [ "$USEFOLDERS" == "true" ]; then
@@ -568,8 +614,8 @@ LidarrConnection () {
 			
 			done
             rm temp
-             if [ -d "$DownloadLocation/Video" ]; then
-                rm -rf "$DownloadLocation/Video"
+             if [ -d "$DownloadLocation/temp" ]; then
+                rm -rf "$DownloadLocation/temp"
             fi
         done
         touch "/config/logs/$sanitizedartistname-$mbid-complete"
