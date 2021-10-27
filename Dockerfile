@@ -28,6 +28,7 @@ RUN \
 		mutagen \
 		r128gain \
 		qtfaststart \
+		streamrip \
 		tidal-dl
  
 # copy local files
