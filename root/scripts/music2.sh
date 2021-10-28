@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.01"
+	log "############# SCRIPT VERSION 1.0.03"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -831,6 +831,10 @@ AlbumProcess () {
 	#echo "$album_artist_name"
 	
 	#exit
+
+	if [ -d "$DownloadLocation/temp-complete" ]; then
+        rm -rf "$DownloadLocation/temp-complete"
+    fi
 	
 	track_ids=$(echo "$album_data" | jq -r '.rows[].modules[] | select(.type=="ALBUM_ITEMS") | .pagedList.items[].item.id')
 	track_ids_count=$(echo "$track_ids" | wc -l)
@@ -965,66 +969,107 @@ AlbumProcess () {
         fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 		
-		ClientDownloadMusic "https://tidal.com/browse/track/$track_id"
+		ClientDownloadMusic "--max-quality 3 https://tidal.com/browse/track/$track_id"
 		ClientDownloadMusicVerification
 		curl -s "$album_cover_url" -o "$DownloadLocation/temp/cover.jpg"
 		
 		#find $DownloadLocation/Album -type f -iname "*.m4a" -exec qtfaststart "{}" \; &>/dev/null
-		file="$(find $DownloadLocation/temp -type f -iname "*.m4a")"
-		filelyric="$(find $DownloadLocation/temp -type f -iname "*.lrc")"
-		qtfaststart "$file" &>/dev/null
-		track_track_number_padded=$(printf "%02d\n" $track_track_number)
-		track_volume_number_padded=$(printf "%02d\n" $track_volume_number)
-		#track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean} ($track_id).m4a"
-		track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.m4a"
-		track_file_lyric_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.lrc"
-		video_file_name="$track_title_clean${track_version_clean}.mp4"
-		track_video_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.mp4"
-		mv "$file" "$DownloadLocation/temp/$track_file_name"
-		if [ -f "$filelyric" ]; then
-			mv "$filelyric" "$DownloadLocation/temp/$track_file_lyric_name"
-		fi
-		file="$DownloadLocation/temp/$track_file_name"
-				
+		flacfile=""
+		m4afile=""
+		flacfile="$(find $DownloadLocation/temp -type f -iname "*.flac")"
+		m4afile="$(find $DownloadLocation/temp -type f -iname "*.m4a")"
+
+		
+						
 		if [ "$track_explicit" = "true" ];then
 			track_explicit=1
 		else
 			track_explicit=0
 		fi
-		
+				
 		if [ "$album_artist_name" = "Various Artists" ]; then
 			songcompilation="1"
 		else
 			songcompilation="0"
 		fi
-		python3 $SCRIPT_DIR/tag_music.py \
-			--file "$file" \
-			--songtitle "$track_title${track_version}" \
-			--songalbum "$album_title${album_version}" \
-			--songartist "$track_artist_names" \
-			--songartistalbum "$album_artist_name" \
-			--songcopyright "$album_copyright" \
-			--songbpm "$deezer_track_bpm" \
-			--songtracknumber "$track_track_number" \
-			--songtracktotal "$track_ids_count" \
-			--songdiscnumber "$track_volume_number" \
-			--songcompilation "$songcompilation" \
-			--songlyricrating "$track_explicit" \
-			--songdate "$album_release_date" \
-			--songyear "$album_release_year" \
-			--songgenre "$deezer_track_album_genres" \
-			--songcomposer "$track_composer_names" \
-			--songisrc "$track_isrc" \
-			--songauthor "$track_lyricist_names" \
-			--songartists "$track_artist_names" \
-			--songengineer "$track_studio_names" \
-			--songproducer "$track_producer_names" \
-			--songmixer "$track_mixer_names" \
-			--songpublisher "$songpublisher" \
-			--songlyrics "$deezer_track_lyrics_text" \
-			--mbrainzalbumartistid "$musicbrainz_main_artist_id" \
-			--songartwork "$DownloadLocation/temp/cover.jpg"
-		log "$albumlog $track_id_number OF $track_ids_count :: OPTIMIZED for Streaming..."
+		
+		if [ -z "$flacfile" ]; then
+			if [ ! -z "$m4afile" ]; then
+				file="$(find $DownloadLocation/temp -type f -iname "*.m4a")"
+				filelyric="$(find $DownloadLocation/temp -type f -iname "*.lrc")"
+				track_track_number_padded=$(printf "%02d\n" $track_track_number)
+				track_volume_number_padded=$(printf "%02d\n" $track_volume_number)
+				#track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean} ($track_id).m4a"
+				track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.m4a"
+				track_file_lyric_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.lrc"
+				video_file_name="$track_title_clean${track_version_clean}.mp4"
+				track_video_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.mp4"
+				mv "$file" "$DownloadLocation/temp/$track_file_name"
+				if [ -f "$filelyric" ]; then
+					mv "$filelyric" "$DownloadLocation/temp/$track_file_lyric_name"
+				fi
+				file="$DownloadLocation/temp/$track_file_name"
+
+				qtfaststart "$file" &>/dev/null
+				
+				python3 $SCRIPT_DIR/tag_music.py \
+					--file "$file" \
+					--songtitle "$track_title${track_version}" \
+					--songalbum "$album_title${album_version}" \
+					--songartist "$track_artist_names" \
+					--songartistalbum "$album_artist_name" \
+					--songcopyright "$album_copyright" \
+					--songbpm "$deezer_track_bpm" \
+					--songtracknumber "$track_track_number" \
+					--songtracktotal "$track_ids_count" \
+					--songdiscnumber "$track_volume_number" \
+					--songcompilation "$songcompilation" \
+					--songlyricrating "$track_explicit" \
+					--songdate "$album_release_date" \
+					--songyear "$album_release_year" \
+					--songgenre "$deezer_track_album_genres" \
+					--songcomposer "$track_composer_names" \
+					--songisrc "$track_isrc" \
+					--songauthor "$track_lyricist_names" \
+					--songartists "$track_artist_names" \
+					--songengineer "$track_studio_names" \
+					--songproducer "$track_producer_names" \
+					--songmixer "$track_mixer_names" \
+					--songpublisher "$songpublisher" \
+					--songlyrics "$deezer_track_lyrics_text" \
+					--mbrainzalbumartistid "$musicbrainz_main_artist_id" \
+					--songartwork "$DownloadLocation/temp/cover.jpg"
+				log "$albumlog $track_id_number OF $track_ids_count :: OPTIMIZED for Streaming..."
+			fi
+		fi
+
+		if [ -z "$m4afile" ]; then
+			if [ ! -z "$flacfile" ]; then
+				file="$(find $DownloadLocation/temp -type f -iname "*.flac")"
+				filelyric="$(find $DownloadLocation/temp -type f -iname "*.lrc")"
+				track_track_number_padded=$(printf "%02d\n" $track_track_number)
+				track_volume_number_padded=$(printf "%02d\n" $track_volume_number)
+				#track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean} ($track_id).m4a"
+				track_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.flac"
+				track_file_lyric_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.lrc"
+				video_file_name="$track_title_clean${track_version_clean}.mp4"
+				track_video_file_name="${track_volume_number_padded}${track_track_number_padded} - $track_title_clean${track_version_clean}.mp4"
+				mv "$file" "$DownloadLocation/temp/$track_file_name"
+				if [ -f "$filelyric" ]; then
+					mv "$filelyric" "$DownloadLocation/temp/$track_file_lyric_name"
+				fi
+				file="$DownloadLocation/temp/$track_file_name"
+				metaflac "$file" --remove-tag=ALBUMARTIST
+				metaflac "$file" --set-tag=ALBUMARTIST="$songartistalbum"
+				metaflac "$file" --set-tag=MUSICBRAINZ_ALBUMARTISTID="$musicbrainz_main_artist_id"
+				metaflac "$file" --set-tag=LABEL="$songpublisher"
+				metaflac "$file" --set-tag=ENGINEER="$track_studio_names"
+				metaflac "$file" --set-tag=PRODUCER="$track_producer_names"
+				metaflac "$file" --set-tag=COMPOSER="$track_composer_names"
+				metaflac "$file" --set-tag=MIXER="$track_mixer_names"
+				metaflac "$file" --set-tag=LYRICIST="$track_lyricist_names"
+			fi
+		fi
 		if [ ! -d "$DownloadLocation/temp-complete" ]; then
 			mkdir -p "$DownloadLocation/temp-complete"
 		fi
@@ -1039,7 +1084,7 @@ AlbumProcess () {
 		
 	done
 	
-	download_count=$(find $DownloadLocation/temp-complete -type f -iname "*.m4a" | wc -l)
+	download_count=$(find $DownloadLocation/temp-complete -type f -iname "*.m4a" -o -iname "*.flac" | wc -l)
 	albumlog="$setlog $DL_TYPE :: $album_number OF $album_total :: $album_title${album_version} ::"
 	log "$albumlog Downloaded :: $download_count of $track_ids_count tracks"
 	
