@@ -25,7 +25,7 @@ ClientDownloadVideo () {
 
 ClientDownloadMusicVerification () {
     if [ -d "$DownloadLocation/temp" ]; then
-		if find $DownloadLocation/temp -type f -iname "*.m4a" | read; then
+		if find $DownloadLocation/temp -type f -iname "*.m4a" -o -iname "*.flac" | read; then
 			log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOAD :: COMPLETE"
 		fi
 	else
