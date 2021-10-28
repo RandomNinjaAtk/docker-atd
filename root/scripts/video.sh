@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.06"
+	log "############# SCRIPT VERSION 1.0.07"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -504,14 +504,14 @@ LidarrConnection () {
 					--songartwork "$DownloadLocation/temp/cover.jpg"
 				rm "$DownloadLocation/temp/temp.mp4"
 				
-				if [ ! -d "$destination" ]; then
-					mkdir -p "$destination"
-					chmod $FolderPermissions "$destination"
-					chown abc:abc "$destination"
+				if [ ! -d "$destination/video" ]; then
+					mkdir -p "$destination/video"
+					chmod 777 "$destination/video"
+					chown abc:abc "$destination/video"
 				fi
 				
-                mv "$file" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
-				cp "$DownloadLocation/temp/cover.jpg" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
+                mv "$file" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
+				cp "$DownloadLocation/temp/cover.jpg" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
 				if [ "$USEFOLDERS" == "true" ]; then
@@ -587,8 +587,8 @@ LidarrConnection () {
 					fi
 				fi
 				
-				nfo="/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).nfo"
-				if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension" ]; then
+				nfo="/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).nfo"
+				if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension" ]; then
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: NFO WRITER :: Writing NFO for $clean_title${clean_version} ($videoid)"
 					if [ ! -f "$nfo" ]; then
 						echo "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" >> "$nfo"
@@ -650,7 +650,7 @@ LidarrConnection () {
 							echo "	</actor>" >> "$nfo"
 						done
 
-						if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
+						if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
 							echo "	<thumb>$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg</thumb>" >> "$nfo"
 						else
 							echo "	<thumb/>" >> "$nfo"
@@ -668,10 +668,10 @@ LidarrConnection () {
             fi
         done
         touch "/config/logs/$sanitizedartistname-$mbid-complete"
-        totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$clean_main_artists_name -*.mp4" | wc -l)
+        totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "$clean_main_artists_name -*.mp4" | wc -l)
         log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $totaldownloadcount VIDEOS DOWNLOADED"
 	done
-	totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "*.mp4" | wc -l)
+	totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "*.mp4" | wc -l)
 	log "############# $totaldownloadcount VIDEOS DOWNLOADED"
 }
 
