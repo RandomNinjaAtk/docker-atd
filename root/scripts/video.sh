@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.04"
+	log "############# SCRIPT VERSION 1.0.05"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -407,7 +407,12 @@ LidarrConnection () {
 			VideoDirector=""
 			VideoPublishers=""
 			VideoPublisher=""
+			VideoContributerCount=""
+			VideoContributerName=""
+			VideoContributerRole=""
 			VideoContributers=$(curl -s "https://listen.tidal.com/v1/videos/$videoid/contributors?limit=100&countryCode=US&locale=en_US&deviceType=BROWSER" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+			VideoContributerCount=$(echo $VideoContributers | jq -r '.items[].name' | wc -l)
+						
 			OLDIFS="$IFS"
 			IFS=$'\n'
 			VideoDirectors=($(echo $VideoContributers | jq -r '.items[] | select(.role=="Video Director") | .name'))
@@ -597,16 +602,24 @@ LidarrConnection () {
 						fi
 						echo "	<album>Music Videos</album>" >> "$nfo"
 						echo "	<plot/>" >> "$nfo"
-						for name in ${!VideoDirectors[@]}; do
-							VideoDirector="${VideoDirectors[$name]}"
-							echo "	<director>$VideoDirector</director>" >> "$nfo"
-						done
+						if [ ! -z "$VideoDirectors" ]; then
+							for name in ${!VideoDirectors[@]}; do
+								VideoDirector="${VideoDirectors[$name]}"
+								echo "	<director>$VideoDirector</director>" >> "$nfo"
+							done
+						else
+							echo "	<director/>"
+						fi
 						echo "	<premiered>$release_date</premiered>" >> "$nfo"
 						echo "	<year>$release_year</year>" >> "$nfo"
-						for name in ${!VideoPublishers[@]}; do
-							VideoPublisher="${VideoPublishers[$name]}"
-							echo "	<studio>$VideoPublisher</studio>" >> "$nfo"
-						done
+						if [ ! -z "$VideoPublishers" ]; then
+							for name in ${!VideoPublishers[@]}; do
+								VideoPublisher="${VideoPublishers[$name]}"
+								echo "	<studio>$VideoPublisher</studio>" >> "$nfo"
+							done
+						else
+							echo "	<studio/>"
+						fi
 						OLDIFS="$IFS"
 						IFS=$'\n'
 						artistgenres=($(echo "$mbzartistinfo" | jq -r ".genres[].name"))
@@ -619,7 +632,24 @@ LidarrConnection () {
 						for name in ${!artists_names[@]}; do
 							artist_name="${artists_names[$name]}"
 							echo "	<artist>$artist_name</artist>" >> "$nfo"
+						done 
+						
+						END=$VideoContributerCount
+						for ((i=1;i<=END;i++)); do
+							ID=$(expr $i - 1)
+							VideoContributerName=$(echo $VideoContributers | jq -r .items[$ID].name)
+							VideoContributerRole=$(echo $VideoContributers | jq -r .items[$ID].role)
+							if [ "$VideoContributerRole" == "Video Director" ] || [ "$VideoContributerRole" == "Music Publisher" ]; then 
+								continue
+							fi
+							echo "	<actor>" >> "$nfo"
+							echo "		<name>$VideoContributerName</name>" >> "$nfo"
+							echo "		<role>$VideoContributerRole</role>" >> "$nfo"
+							echo "		<order>$ID</order>" >> "$nfo"
+							echo "		<thumb/>" >> "$nfo"
+							echo "	</actor>" >> "$nfo"
 						done
+
 						if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
 							echo "	<thumb>$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg</thumb>" >> "$nfo"
 						else
