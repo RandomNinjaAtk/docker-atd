@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.05"
+	log "############# SCRIPT VERSION 1.0.06"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -608,7 +608,7 @@ LidarrConnection () {
 								echo "	<director>$VideoDirector</director>" >> "$nfo"
 							done
 						else
-							echo "	<director/>"
+							echo "	<director/>" >> "$nfo"
 						fi
 						echo "	<premiered>$release_date</premiered>" >> "$nfo"
 						echo "	<year>$release_year</year>" >> "$nfo"
@@ -618,7 +618,7 @@ LidarrConnection () {
 								echo "	<studio>$VideoPublisher</studio>" >> "$nfo"
 							done
 						else
-							echo "	<studio/>"
+							echo "	<studio/>" >> "$nfo"
 						fi
 						OLDIFS="$IFS"
 						IFS=$'\n'
