@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.08"
+	log "############# SCRIPT VERSION 1.0.09"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -69,6 +69,9 @@ Configuration () {
 		else
 			# create backup of token to allow for container updates
 			if [ ! -d /config/backup ]; then
+				mkdir -p /config/backup
+			else
+				rm -rf /config/backup
 				mkdir -p /config/backup
 			fi
 			log "TIDAL :: Backing up config from \"/root/.config/streamrip/config.toml\" to \"/config/backup/streamrip_config.toml\""
