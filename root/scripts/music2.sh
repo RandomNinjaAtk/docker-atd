@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.04"
+	log "############# SCRIPT VERSION 1.0.05"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -836,6 +836,7 @@ AlbumProcess () {
         rm -rf "$DownloadLocation/temp-complete"
     fi
 	
+	album_genre=""
 	track_ids=$(echo "$album_data" | jq -r '.rows[].modules[] | select(.type=="ALBUM_ITEMS") | .pagedList.items[].item.id')
 	track_ids_count=$(echo "$track_ids" | wc -l)
 	track_ids=($(echo "$track_ids"))
@@ -862,8 +863,16 @@ AlbumProcess () {
 		track_explicit="$(echo "$track_data" | jq -r ".explicit")"
 		track_volume_number="$(echo "$track_data" | jq -r ".volumeNumber")"
 		track_track_number="$(echo "$track_data" | jq -r ".trackNumber")"
-		track_isrc=$(echo "$track_data" | jq -r ".isrc")
 		track_copyright=$(echo "$track_data" | jq -r ".copyright")
+		track_isrc=$(echo "$track_data" | jq -r ".isrc")
+
+		if [ -z "$album_genre" ]; then
+			track_deezer_data=$(curl -s "https://api.deezer.com/2.0/track/isrc:$track_isrc")
+			deezer_album_id=$(echo $track_deezer_data | jq -r .album.id)
+			deezer_album_data=$(curl -s "https://api.deezer.com/2.0/album/$deezer_album_id")
+			album_deezer_genre="$(echo $deezer_album_data | jq -r ".genres.data[].name" | head -n 1)"
+			album_genre="${album_deezer_genre,,}"
+		fi
 		#track_producer_ids=($(echo "$track_credits" | jq -r '.select(.role=="Producer") | .contributors[].id'))
 		#track_composer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Composer") | .contributors[].id'))
 		#track_lyricist_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Lyricist") | .contributors[].id'))
@@ -1058,7 +1067,7 @@ AlbumProcess () {
 				metaflac "$file" --set-tag=YEAR="$album_release_year"
 				metaflac "$file" --set-tag=DATE="$album_release_date"
 				metaflac "$file" --set-tag=ISRC="$track_isrc"
-				
+												
 				if [ "$compilation" = "true" ]; then
 					metaflac "$file" --set-tag=COMPILATION="1"
 				else
@@ -1104,6 +1113,11 @@ AlbumProcess () {
 		
 	done
 	
+	if [ ! -z "$album_genre" ]; then
+		for file in "$DownloadLocation/temp-complete"/*.flac; do
+			metaflac "$file" --set-tag=GENRE="$album_genre"
+		done
+	fi
 	download_count=$(find $DownloadLocation/temp-complete -type f -iname "*.m4a" -o -iname "*.flac" | wc -l)
 	albumlog="$setlog $DL_TYPE :: $album_number OF $album_total :: $album_title${album_version} ::"
 	log "$albumlog Downloaded :: $download_count of $track_ids_count tracks"
@@ -1174,6 +1188,9 @@ AlbumProcess () {
 			echo "	<title>$album_title${album_version}</title>" >> "$nfo"
 			echo "	<userrating/>" >> "$nfo"
 			echo "	<year>$album_release_year</year>" >> "$nfo"
+			if [ ! -z "$album_genre" ]; then
+				echo "	<genre>$album_genre</genre>" >> "$nfo"			
+			fi
 			if [ "$album_review" = "null" ]; then
 				echo "	<review/>" >> "$nfo"
 			else
