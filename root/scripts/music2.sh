@@ -46,12 +46,12 @@ Configuration () {
 				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
 				# remove backup token
 				rm /config/backup/streamrip_config.toml 
-			fi
-		else
-			log "TIDAL :: No default config found, importing default config from \"$SCRIPT_DIR/streamrip_config.toml\""
-			if [ -f "$SCRIPT_DIR/streamrip_config.toml" ]; then
-				cp "$SCRIPT_DIR/streamrip_config.toml" /root/.config/streamrip/config.toml
-				chmod 777 -R /root
+			else
+				log "TIDAL :: No default config found, importing default config from \"$SCRIPT_DIR/streamrip_config.toml\""
+				if [ -f "$SCRIPT_DIR/streamrip_config.toml" ]; then
+					cp "$SCRIPT_DIR/streamrip_config.toml" /root/.config/streamrip/config.toml
+					chmod 777 -R /root
+				fi
 			fi
 		fi
 	fi
