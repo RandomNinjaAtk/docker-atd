@@ -14,8 +14,8 @@ Configuration () {
 	log ""
 	log ""
 	sleep 2
-	log "############# $TITLE"
-	log "############# SCRIPT VERSION 1.0.07"
+	log "############# $TITLE - Video"
+	log "############# SCRIPT VERSION 1.0.08"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -86,15 +86,16 @@ Configuration () {
 		# check for backup token and use it if exists
 		if [ ! -f /root/.config/streamrip/config.toml ]; then
 			if [ -f /config/backup/streamrip_config.toml ]; then
+				log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml \""
 				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
 				# remove backup token
 				rm /config/backup/streamrip_config.toml 
-			fi
-		else
-			log "TIDAL :: No default config found, importing default config \"tidal.json\""
-			if [ -f $SCRIPT_DIR/streamrip_config.toml ]; then
-				cp $SCRIPT_DIR/streamrip_config.toml /root/.config/streamrip/config.toml
-				chmod 777 -R /root
+			else
+				log "TIDAL :: No default config found, importing default config from \"$SCRIPT_DIR/streamrip_config.toml\""
+				if [ -f "$SCRIPT_DIR/streamrip_config.toml" ]; then
+					cp "$SCRIPT_DIR/streamrip_config.toml" /root/.config/streamrip/config.toml
+					chmod 777 -R /root
+				fi
 			fi
 		fi
 	fi
@@ -114,6 +115,7 @@ Configuration () {
 			if [ ! -d /config/backup ]; then
 				mkdir -p /config/backup
 			fi
+			log "TIDAL :: Backing up config from \"/root/.config/streamrip/config.toml\" to \"/config/backup/streamrip_config.toml\""
 			cp -p /root/.config/streamrip/config.toml /config/backup/streamrip_config.toml
 		fi
 	fi
