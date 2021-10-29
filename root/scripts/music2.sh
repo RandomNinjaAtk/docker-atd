@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.05"
+	log "############# SCRIPT VERSION 1.0.06"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -36,7 +36,43 @@ Configuration () {
 		log "$TITLESHORT Script AutoStart: DISABLED"
 	fi
 
+	 create streamrip config directory if missing
+	if [ ! -d "/root/.config/streamrip" ]; then
+		mkdir -p "/root/.config/streamrip"
+		# check for backup token and use it if exists
+		if [ ! -f /root/.config/streamrip/config.toml ]; then
+			if [ -f /config/backup/streamrip_config.toml ]; then
+				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
+				# remove backup token
+				rm /config/backup/streamrip_config.toml 
+			fi
+		else
+			log "TIDAL :: No default config found, importing default config \"tidal.json\""
+			if [ -f $SCRIPT_DIR/streamrip_config.toml ]; then
+				cp $SCRIPT_DIR/streamrip_config.toml /root/.config/streamrip/config.toml
+				chmod 777 -R /root
+			fi
+		fi
+	fi
+	
+	TokenCheck=$(cat /root/.config/streamrip/config.toml | grep token_expiry | wc -m)
+	if [ $TokenCheck == 18 ]; then
+		log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
+		rip config --tidal
+	fi
 
+	if [ -f /root/.config/streamrip/config.toml ]; then
+		if [[ $(find "/root/.config/streamrip/config.toml" -mtime +6 -print) ]]; then
+			log "TIDAL :: ERROR :: Token expired, removing..."
+			rip config --tidal
+		else
+			# create backup of token to allow for container updates
+			if [ ! -d /config/backup ]; then
+				mkdir -p /config/backup
+			fi
+			cp -p /root/.config/streamrip/config.toml /config/backup/streamrip_config.toml
+		fi
+	fi
  
 	# check for MusicbrainzMirror setting, if not set, set to default
 	if [ -z "$MusicbrainzMirror" ]; then
@@ -836,7 +872,7 @@ AlbumProcess () {
         rm -rf "$DownloadLocation/temp-complete"
     fi
 	
-	album_genre=""
+	album_genre=""	
 	track_ids=$(echo "$album_data" | jq -r '.rows[].modules[] | select(.type=="ALBUM_ITEMS") | .pagedList.items[].item.id')
 	track_ids_count=$(echo "$track_ids" | wc -l)
 	track_ids=($(echo "$track_ids"))
@@ -867,11 +903,17 @@ AlbumProcess () {
 		track_isrc=$(echo "$track_data" | jq -r ".isrc")
 
 		if [ -z "$album_genre" ]; then
+			track_deezer_data=""
+			deezer_album_id=""
 			track_deezer_data=$(curl -s "https://api.deezer.com/2.0/track/isrc:$track_isrc")
-			deezer_album_id=$(echo $track_deezer_data | jq -r .album.id)
-			deezer_album_data=$(curl -s "https://api.deezer.com/2.0/album/$deezer_album_id")
-			album_deezer_genre="$(echo $deezer_album_data | jq -r ".genres.data[].name" | head -n 1)"
-			album_genre="${album_deezer_genre,,}"
+			if echo $track_deezer_data | grep "error" | read; then
+				album_genre=""
+			else
+				deezer_album_id=$(echo $track_deezer_data | jq -r .album.id)
+				deezer_album_data=$(curl -s "https://api.deezer.com/2.0/album/$deezer_album_id")
+				album_deezer_genre="$(echo $deezer_album_data | jq -r ".genres.data[].name" | head -n 1)"
+				album_genre="${album_deezer_genre,,}"
+			fi
 		fi
 		#track_producer_ids=($(echo "$track_credits" | jq -r '.select(.role=="Producer") | .contributors[].id'))
 		#track_composer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Composer") | .contributors[].id'))
