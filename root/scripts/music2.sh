@@ -36,7 +36,7 @@ Configuration () {
 		log "$TITLESHORT Script AutoStart: DISABLED"
 	fi
 
-	 create streamrip config directory if missing
+	# create streamrip config directory if missing
 	if [ ! -d "/root/.config/streamrip" ]; then
 		mkdir -p "/root/.config/streamrip"
 		# check for backup token and use it if exists
