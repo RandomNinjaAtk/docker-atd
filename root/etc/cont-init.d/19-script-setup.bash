@@ -9,7 +9,7 @@ else
 fi
 
 if [ -d "/config/scripts" ]; then
-	cp /scripts/* /config/scripts/
+	cp -r /scripts/* /config/scripts/
 fi
 
 # create cache directory if missing
