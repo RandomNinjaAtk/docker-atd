@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.09"
+	log "############# SCRIPT VERSION 1.0.091"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -1015,7 +1015,7 @@ AlbumProcess () {
         fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 		
-		ClientDownloadMusic "--max-quality 3 https://tidal.com/browse/track/$track_id"
+		ClientDownloadMusic "--max-quality 2 https://tidal.com/browse/track/$track_id"
 		ClientDownloadMusicVerification
 		curl -s "$album_cover_url" -o "$DownloadLocation/temp/cover.jpg"
 		
