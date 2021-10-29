@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.03"
+	log "############# SCRIPT VERSION 1.0.04"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -201,7 +201,7 @@ ProcessArtist () {
 		curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU' -o "/config/cache/${artist_id}-tidal-artist.json"
 	fi
 	artist_data=$(cat "/config/cache/${artist_id}-tidal-artist.json")
-	artist_biography="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .bio.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>//g')"
+	artist_biography="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .bio.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.picture")"
 	artist_name="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.name")"
 	artist_picture_id_fix=$(echo "$artist_picture_id" | sed "s/-/\//g")
@@ -739,7 +739,7 @@ AlbumProcess () {
 	else
 		album_type="$(echo "$album_data_info" | jq -r " .album.type")"
 	fi
-	album_review="$(echo "$album_data_info" | jq -r " .review.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>//g')"
+	album_review="$(echo "$album_data_info" | jq -r " .review.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	album_cover_id="$(echo "$album_data_info" | jq -r " .album.cover")"
 	album_cover_id_fix=$(echo "$album_cover_id" | sed "s/-/\//g")
 	album_cover_url=https://resources.tidal.com/images/$album_cover_id_fix/1280x1280.jpg
@@ -817,8 +817,8 @@ AlbumProcess () {
 		rm "/config/cache/${artist_id}-tidal-$album_id-creds_data.json"
 	fi
 	
-	#echo "$album_data" > album_data.json
-	#echo "$album_cred" > album_cred.json
+	# echo "$album_data" > album_data.json
+	# echo "$album_cred" > album_cred.json
 	
 	
 	#echo $album_title
@@ -842,9 +842,13 @@ AlbumProcess () {
 	for id in ${!track_ids[@]}; do
 		track_id_number=$(( $id + 1 ))
 		track_id="${track_ids[$id]}"
-		track_data=$(echo "$album_data" | jq -r ".rows[].modules[] | select(.type==\"ALBUM_ITEMS\") | .pagedList.items[].item | select(.id==$track_id)")
-		track_credits=$(echo "$album_cred" | jq -r ".items[] | select(.item.id==$track_id)")
-		#echo $track_credits
+		track_data=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/?countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+		track_credits=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/contributors?countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+		#echo $track_data > track_data.json
+		#exit
+		#echo $track_credits | jq -r
+		sleep 1
+		
 		track_title="$(echo "$track_data" | jq -r ".title")"
 		track_title_clean="$(echo "$track_title" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 		track_version="$(echo "$track_data" | jq -r ".version")"
@@ -858,107 +862,93 @@ AlbumProcess () {
 		track_explicit="$(echo "$track_data" | jq -r ".explicit")"
 		track_volume_number="$(echo "$track_data" | jq -r ".volumeNumber")"
 		track_track_number="$(echo "$track_data" | jq -r ".trackNumber")"
-		track_isrc=$(echo "$track_credits" | jq -r ".item.isrc")
-		track_producer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Producer") | .contributors[].id'))
-		track_composer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Composer") | .contributors[].id'))
-		track_lyricist_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Lyricist") | .contributors[].id'))
-		track_mixer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Mixer") | .contributors[].id'))
-		track_studio_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Studio Personnel") | .contributors[].id'))
-		track_artist_id=$(echo "$track_credits" | jq -r ".item.artist.id")
-		track_artist_name=$(echo "$track_credits" | jq -r ".item.artist.name")
-		track_artists_ids=($(echo "$track_credits" | jq -r ".item.artists[].id"))
-				
+		track_isrc=$(echo "$track_data" | jq -r ".isrc")
+		track_copyright=$(echo "$track_data" | jq -r ".copyright")
+		#track_producer_ids=($(echo "$track_credits" | jq -r '.select(.role=="Producer") | .contributors[].id'))
+		#track_composer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Composer") | .contributors[].id'))
+		#track_lyricist_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Lyricist") | .contributors[].id'))
+		#track_mixer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Mixer") | .contributors[].id'))
+		#track_studio_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Studio Personnel") | .contributors[].id'))
+		#track_artist_id=$(echo "$track_credits" | jq -r ".item.artist.id")
+		#track_artist_name=$(echo "$track_data" | jq -r ".artist.name")
+		#track_artists_ids=($(echo "$track_data" | jq -r ".item.artists[].id"))
+		
+		#echo $track_data > track_data.json
+		#echo $track_credits > track_credits.json
+
+		OLDIFS="$IFS"
+		IFS=$'\n'
+		#producers=($(echo "$track_credits" | jq -r "select(.type==\"Producer\") | .contributors[].name"))
+		#composers=($(echo "$track_credits" | jq -r "select(.type==\"Composer\") | .contributors[].name"))
+		#lyricists=($(echo "$track_credits" | jq -r "select(.type==\"Lyricist\") | .contributors[].name"))
+		#mixers=($(echo "$track_credits" | jq -r ".select(.type==\"Mixer\") | .contributors[].name"))
+		#engineers=($(echo "$track_credits" | jq -r "select(.type==\"Studio Personnel\") | .contributors[].name"))
+		artists=($(echo "$track_data" | jq -r ".artists[].name"))
+		artists_main=($(echo "$track_data" | jq -r ".artists[] | select(.type==\"MAIN\") | .name"))
+		artists_feat=($(echo "$track_data" | jq -r ".artists[] | select(.type==\"FEATURED\") | .name"))
+		IFS="$OLDIFS"
+		
+		track_artist_main_names=""
+		track_artist_main_names=()
+		for artist in ${!artists_main[@]}; do
+			track_artist_main_name="$(echo "${artists_main[$artist]}" | sed -r 's/, /;/g')"
+			track_artist_main_names+=("$track_artist_main_name")
+			OUT=$OUT"${track_artist_main_name} ; "
+		done
+		track_artist_main_names="$(echo "${OUT%???}" | sed -r 's/ ; /;/g')"
+		OUT=""
+
+		IFS=';' read -ra names <<< "$track_artist_main_names"
+		for i in "${names[@]}"; do
+			track_artist_main_names+=("$i")
+			OUT=$OUT"${i} & "
+		done
+		track_artist_main_names="${OUT%???}"
+		OUT=""
+
+		track_artists_feat_names=""
+		track_artists_feat_names=()
+		for artist in ${!artists_feat[@]}; do
+			track_artist_feat_name="$(echo "${artists_feat[$artist]}" | sed -r 's/, /;/g')"
+			track_artists_feat_names+=("$track_artist_feat_name")
+			OUT=$OUT"${track_artist_feat_name} ; "
+		done
+		track_artists_feat_names="$(echo "${OUT%???}" | sed -r 's/ ; /;/g')"
+		OUT=""
+
+		IFS=';' read -ra names <<< "$track_artists_feat_names"
+		for i in "${names[@]}"; do
+			track_artists_feat_names+=("$i")
+			OUT=$OUT"${i} & "
+		done
+		track_artists_feat_names="$(echo "${OUT%???}" | sed -r 's/ & /, /g')"
+		OUT=""
+
+		
+		if [ ! -z "$track_artists_feat_names" ]; then
+			metadata_artist="$track_artist_main_names feat. $track_artists_feat_names"
+		else
+			metadata_artist="$track_artist_main_names"
+		fi
+
+		track_artists_name=""
+		track_artists_names=""
 		track_artists_names=()
-		for id in ${!track_artists_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_artist_id=${track_artists_ids[$id]}
-			track_artist_name="$(echo "$track_data" | jq -r ".artists[] | select(.id==$track_artist_id) | .name")"
-			track_artist_type="$(echo "$track_data" | jq -r ".artists[] | select(.id==$track_artist_id) | .type")"
-			track_artists_names+=("$track_artist_name")
-			OUT=$OUT"$track_artist_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
-
+		for artist in ${!artists[@]}; do
+			track_artists_name="$(echo "${artists[$artist]}" | sed -r 's/, /;/g')"
+			track_artists_names+=("$track_artists_name")
+			OUT=$OUT"${track_artists_name} ; "
 		done
-		track_artist_names="${OUT%???}"
+		track_artists_names="$(echo "${OUT%???}" | sed -r 's/ ; /;/g')"
 		OUT=""
-		nfo_track_artist_name="$(echo "$track_data" | jq -r ".artists[] | .name")"
+
 		
-		track_producer_names=()
-		for id in ${!track_producer_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_producer_id=${track_producer_ids[$id]}
-			track_producer_name="$(echo "$track_credits" | jq -r ".credits[] | select(.type==\"Producer\") | .contributors[] | select(.id==$track_producer_id) | .name")"
-			track_producer_names+=("$track_producer_name")
-			OUT=$OUT"$track_producer_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
 
-		done
-		track_producer_names="${OUT%???}"
-		OUT=""
+		 
+
 		
-		track_composer_names=()
-		for id in ${!track_composer_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_composer_id=${track_composer_ids[$id]}
-			track_composer_name="$(echo "$track_credits" | jq -r ".credits[] | select(.type==\"Composer\") | .contributors[] | select(.id==$track_composer_id) | .name")"
-			track_composer_names+=("$track_composer_name")
-			OUT=$OUT"$track_composer_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
-
-		done
-		track_composer_names="${OUT%???}"
-		OUT=""
 		
-		track_lyricist_names=()
-		for id in ${!track_lyricist_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_lyricist_id=${track_lyricist_ids[$id]}
-			track_lyricist_name="$(echo "$track_credits" | jq -r ".credits[] | select(.type==\"Lyricist\") | .contributors[] | select(.id==$track_lyricist_id) | .name")"
-			track_lyricist_names+=("$track_lyricist_name")
-			OUT=$OUT"$track_lyricist_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
-
-		done
-		track_lyricist_names="${OUT%???}"
-		OUT=""
 		
-		track_mixer_names=()
-		for id in ${!track_mixer_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_mixer_id=${track_mixer_ids[$id]}
-			track_mixer_name="$(echo "$track_credits" | jq -r ".credits[] | select(.type==\"Mixer\") | .contributors[] | select(.id==$track_mixer_id) | .name")"
-			track_mixer_names+=("$track_mixer_name")
-			OUT=$OUT"$track_mixer_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
-
-		done
-		track_mixer_names="${OUT%???}"
-		OUT=""
-		
-		track_studio_names=()
-		for id in ${!track_studio_ids[@]}; do
-			subprocess=$(( $id + 1 ))
-			track_studio_id=${track_studio_ids[$id]}
-			track_studio_name="$(echo "$track_credits" | jq -r ".credits[] | select(.type==\"Studio Personnel\") | .contributors[] | select(.id==$track_studio_id) | .name")"
-			track_studio_names+=("$track_studio_name")
-			OUT=$OUT"$track_studio_name / "
-			
-			#echo $track_artist_name
-			#echo $track_artist_type
-
-		done
-		track_studio_names="${OUT%???}"
-		OUT=""
 		
 		deezer_track_lyrics_text=""
 		deezer_track_bpm="0"
@@ -1035,7 +1025,7 @@ AlbumProcess () {
 					--songengineer "$track_studio_names" \
 					--songproducer "$track_producer_names" \
 					--songmixer "$track_mixer_names" \
-					--songpublisher "$songpublisher" \
+					--songpublisher "$album_copyright" \
 					--songlyrics "$deezer_track_lyrics_text" \
 					--mbrainzalbumartistid "$musicbrainz_main_artist_id" \
 					--songartwork "$DownloadLocation/temp/cover.jpg"
@@ -1060,14 +1050,44 @@ AlbumProcess () {
 				fi
 				file="$DownloadLocation/temp/$track_file_name"
 				metaflac "$file" --remove-tag=ALBUMARTIST
-				metaflac "$file" --set-tag=ALBUMARTIST="$songartistalbum"
+				metaflac "$file" --remove-tag=ARTIST
+				metaflac "$file" --set-tag=ARTIST="$metadata_artist"
+				metaflac "$file" --set-tag=ALBUMARTIST="$album_artist_name"
 				metaflac "$file" --set-tag=MUSICBRAINZ_ALBUMARTISTID="$musicbrainz_main_artist_id"
-				metaflac "$file" --set-tag=LABEL="$songpublisher"
-				metaflac "$file" --set-tag=ENGINEER="$track_studio_names"
-				metaflac "$file" --set-tag=PRODUCER="$track_producer_names"
-				metaflac "$file" --set-tag=COMPOSER="$track_composer_names"
-				metaflac "$file" --set-tag=MIXER="$track_mixer_names"
-				metaflac "$file" --set-tag=LYRICIST="$track_lyricist_names"
+				metaflac "$file" --set-tag=LABEL="$track_copyright"
+				metaflac "$file" --set-tag=YEAR="$album_release_year"
+				metaflac "$file" --set-tag=DATE="$album_release_date"
+				metaflac "$file" --set-tag=ISRC="$track_isrc"
+				
+				if [ "$compilation" = "true" ]; then
+					metaflac "$file" --set-tag=COMPILATION="1"
+				else
+					if [ "$album_artist_name" = "Various Artists" ]; then
+						metaflac "$file" --set-tag=COMPILATION="1"
+					else
+						metaflac "$file" --set-tag=COMPILATION="0"
+					fi
+				fi
+
+				name=""
+				IFS=';' read -ra names <<< "$track_artists_names"
+				for name in "${names[@]}"; do
+					metaflac "$file" --set-tag=ARTISTS="$name"
+				done
+				name=""
+				
+				TrackContributerCount=""
+				TrackContributerName=""
+				TrackContributerRole=""
+				TrackContributerCount=$(echo $track_credits | jq -r '.items[].name' | wc -l)
+
+				END=$TrackContributerCount
+				for ((i=1;i<=END;i++)); do
+					ID=$(expr $i - 1)
+					TrackContributerName=$(echo $track_credits | jq -r .items[$ID].name)
+					TrackContributerRole=$(echo $track_credits | jq -r .items[$ID].role)
+					metaflac "$file" --set-tag="$TrackContributerRole"="$TrackContributerName"
+				done
 			fi
 		fi
 		if [ ! -d "$DownloadLocation/temp-complete" ]; then
@@ -1158,6 +1178,11 @@ AlbumProcess () {
 				echo "	<review/>" >> "$nfo"
 			else
 				echo "	<review>$album_review</review>" >> "$nfo"
+			fi
+			if [ "$compilation" = "true" ]; then
+				echo "	<compilation>true</compilation>" >> "$nfo"
+			else
+				echo "	<compilation>false</compilation>" >> "$nfo"
 			fi
 			echo "	<albumArtistCredits>" >> "$nfo"
 			echo "		<artist>$album_artist_name</artist>" >> "$nfo"
