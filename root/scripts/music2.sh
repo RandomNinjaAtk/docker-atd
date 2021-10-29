@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.07"
+	log "############# SCRIPT VERSION 1.0.08"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -42,7 +42,7 @@ Configuration () {
 		# check for backup token and use it if exists
 		if [ ! -f /root/.config/streamrip/config.toml ]; then
 			if [ -f /config/backup/streamrip_config.toml ]; then
-				log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml \""
+				log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml\""
 				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
 				# remove backup token
 				rm /config/backup/streamrip_config.toml 
