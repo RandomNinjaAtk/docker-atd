@@ -18,7 +18,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.091"
+	log "############# SCRIPT VERSION 1.0.092"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -36,48 +36,7 @@ Configuration () {
 		log "$TITLESHORT Script AutoStart: DISABLED"
 	fi
 
-	# create streamrip config directory if missing
-	if [ ! -d "/root/.config/streamrip" ]; then
-		mkdir -p "/root/.config/streamrip"
-		# check for backup token and use it if exists
-		if [ ! -f /root/.config/streamrip/config.toml ]; then
-			if [ -f /config/backup/streamrip_config.toml ]; then
-				log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml\""
-				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
-				# remove backup token
-				rm /config/backup/streamrip_config.toml 
-			else
-				log "TIDAL :: No default config found, importing default config from \"$SCRIPT_DIR/streamrip_config.toml\""
-				if [ -f "$SCRIPT_DIR/streamrip_config.toml" ]; then
-					cp "$SCRIPT_DIR/streamrip_config.toml" /root/.config/streamrip/config.toml
-					chmod 777 -R /root
-				fi
-			fi
-		fi
-	fi
-	
-	TokenCheck=$(cat /root/.config/streamrip/config.toml | grep token_expiry | wc -m)
-	if [ $TokenCheck == 18 ]; then
-		log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
-		rip config --tidal
-	fi
-
-	if [ -f /root/.config/streamrip/config.toml ]; then
-		if [[ $(find "/root/.config/streamrip/config.toml" -mtime +6 -print) ]]; then
-			log "TIDAL :: ERROR :: Token expired, removing..."
-			rip config --tidal
-		else
-			# create backup of token to allow for container updates
-			if [ ! -d /config/backup ]; then
-				mkdir -p /config/backup
-			else
-				rm -rf /config/backup
-				mkdir -p /config/backup
-			fi
-			log "TIDAL :: Backing up config from \"/root/.config/streamrip/config.toml\" to \"/config/backup/streamrip_config.toml\""
-			cp -p /root/.config/streamrip/config.toml /config/backup/streamrip_config.toml
-		fi
-	fi
+	ClientConfigCheck
  
 	# check for MusicbrainzMirror setting, if not set, set to default
 	if [ -z "$MusicbrainzMirror" ]; then
