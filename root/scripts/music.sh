@@ -8,6 +8,7 @@ appears_on_enabled=false
 
 source $SCRIPT_DIR/resources/streamrip.sh
 source $SCRIPT_DIR/resources/musicbrainz.sh
+source $SCRIPT_DIR/resources/media_processors.sh
 
 Configuration () {
 	processstartid="$(ps -A -o pid,cmd|grep "start.bash" | grep -v grep | head -n 1 | awk '{print $1}')"
@@ -19,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.093"
+	log "############# SCRIPT VERSION 1.0.094"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -81,6 +82,26 @@ Configuration () {
 		fi
 	fi
 
+	if [ ! -z "$EnableReplayGain" ]; then
+		if [ "$EnableReplayGain" == "true" ]; then
+			log "$TITLESHORT: Replaygain Tagging: ENABLED"
+		else
+			log "$TITLESHORT: Replaygain Tagging: DISABLED"
+		fi
+	else
+		log "WARNING: EnableReplayGain setting invalid, defaulting to: false"
+		EnableReplayGain="false"
+	fi
+
+	if [ ! -z "$AlbumTypeFilter" ]; then
+		EnableAlbumFilter=true
+		log "$TITLESHORT: Album Type Filter: ENABLED"
+		log "$TITLESHORT: Filtering: $AlbumTypeFilter"		
+	else
+		EnableAlbumFilter=false
+		log "$TITLESHORT: Album Type Filter: DISABLED"
+	fi
+
 	if [ $error = 1 ]; then
 		log "Please correct errors before attempting to run script again..."
 		log "Exiting..."
@@ -94,7 +115,23 @@ log () {
     echo $m_time" "$1
 }
 
+AlbumFilter () {
 
+	IFS=', ' read -r -a filters <<< "$AlbumTypeFilter"
+	for filter in "${filters[@]}"
+	do
+		if [ "$filter" == "$album_type " ]; then
+			filtermatch=true
+			filtertype="$filter"
+			break
+		else
+			filtermatch=false
+			filtertype=""
+			continue
+		fi
+	done
+
+}
 
 LidarrConnection () {
 
@@ -725,6 +762,22 @@ AlbumProcess () {
 	album_artist_name_clean="$(echo "$album_artist_name" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 	album_folder_name="$album_artist_name_clean ($album_artist_id)/$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
 	albumlog="$albumlog $album_title${album_version} ::"
+
+
+	if [ $EnableAlbumFilter == true ]; then
+			AlbumFilter
+		
+			if [ $filtermatch == true ]; then
+				log "$albumlog ERROR :: Album Type matched unwanted filter "$filtertype", skipping..."
+				if [ ! -d /config/logs/filtered ]; then
+					mkdir -p /config/logs/filtered
+				fi
+				if [ ! -f /config/logs/filtered/$album_id ]; then
+					touch /config/logs/filtered/$album_id
+				fi
+				continue
+			fi
+		fi
 	if [ "$album_artist_id" -ne "$artist_id" ]; then
 		if [ "$album_artist_id" -ne "2935" ]; then
 			log "$albumlog ERROR :: ARTIST :: $album_artist_name ($album_artist_id) :: Not Wanted :: Skipping..."
