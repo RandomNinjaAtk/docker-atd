@@ -57,7 +57,7 @@ ClientConfigCheck () {
 
 ClientSelfTest () {
 	log "SELF TEST :: PERFORMING DL CLIENT TEST"
-	ClientDownloadMusic "--max-quality 0 https://tidal.com/browse/track/234794"
+	ClientDownload "--max-quality 0 https://tidal.com/browse/track/234794"
 	if find $DownloadLocation/temp -type f -iname "*.m4a" | read; then
 		log "SELF TEST :: SUCCESS"
 		if [ -d $DownloadLocation/temp ]; then
