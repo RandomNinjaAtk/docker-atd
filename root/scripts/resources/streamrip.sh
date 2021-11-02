@@ -72,11 +72,7 @@ ClientSelfTest () {
 	fi
 }
 
-ClientDownloadMusic () {
-    rip url $1 &>/dev/null
-}
-
-ClientDownloadVideo () {
+ClientDownload() {
     rip url $1 &>/dev/null
 }
 
