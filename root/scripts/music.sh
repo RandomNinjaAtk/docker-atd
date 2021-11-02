@@ -7,6 +7,7 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 appears_on_enabled=false
 
 source $SCRIPT_DIR/resources/streamrip.sh
+source $SCRIPT_DIR/resources/musicbrainz.sh
 
 Configuration () {
 	processstartid="$(ps -A -o pid,cmd|grep "start.bash" | grep -v grep | head -n 1 | awk '{print $1}')"
@@ -18,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.092"
+	log "############# SCRIPT VERSION 1.0.093"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -37,35 +38,8 @@ Configuration () {
 	fi
 
 	ClientConfigCheck
- 
-	# check for MusicbrainzMirror setting, if not set, set to default
-	if [ -z "$MusicbrainzMirror" ]; then
-		MusicbrainzMirror=https://musicbrainz.org
-	fi
-	# Verify Musicbrainz DB Connectivity
-	musicbrainzdbtest=$(curl -s -A "$agent" "${MusicbrainzMirror}/ws/2/artist/f59c5520-5f46-4d2c-b2c4-822eabf53419?fmt=json")
-	musicbrainzdbtestname=$(echo "${musicbrainzdbtest}"| jq -r '.name')
-	if [ "$musicbrainzdbtestname" != "Linkin Park" ]; then
-		log "ERROR: Cannot communicate with Musicbrainz"
-		log "ERROR: Expected Response \"Linkin Park\", received response \"$musicbrainzdbtestname\""
-		log "ERROR: URL might be Invalid: $MusicbrainzMirror"
-		log "ERROR: Remote Mirror may be throttling connection..."
-		log "ERROR: Link used for testing: ${MusicbrainzMirror}/ws/2/artist/f59c5520-5f46-4d2c-b2c4-822eabf53419?fmt=json"
-		log "ERROR: Please correct error, consider using official Musicbrainz URL: https://musicbrainz.org"
-		error=1
-	else
-		log "Musicbrainz Mirror Valid: $MusicbrainzMirror"
-		if echo "$MusicbrainzMirror" | grep -i "musicbrainz.org" | read; then
-			if [ "$MusicbrainzRateLimit" != 1 ]; then
-				MusicbrainzRateLimit="1.5"
-			fi
-			log "Musicbrainz Rate Limit: $MusicbrainzRateLimit (Queries Per Second)"
-		else
-			log "Musicbrainz Rate Limit: $MusicbrainzRateLimit (Queries Per Second)"
-			MusicbrainzRateLimit="0$(echo $(( 100 * 1 / $MusicbrainzRateLimit )) | sed 's/..$/.&/')"
-		fi
-	fi
-
+	MusicbrainzConfigurationValidation
+	
 	# verify downloads location
 	if [ -d "/downloads-atd" ]; then
 		log "Download Location: $DownloadLocation"
