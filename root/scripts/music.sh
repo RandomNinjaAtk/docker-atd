@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.094"
+	log "############# SCRIPT VERSION 1.0.095"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -761,7 +761,7 @@ AlbumProcess () {
 	album_artist_id="$(echo "$album_data_info" | jq -r ".album.artists[].id" | head -n 1)"
 	album_artist_name_clean="$(echo "$album_artist_name" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 	album_folder_name="$album_artist_name_clean ($album_artist_id)/$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
-	albumlog="$albumlog $album_title${album_version} ::"
+	albumlog="$albumlog $album_type :: $album_title${album_version} ::"
 
 
 	if [ $EnableAlbumFilter == true ]; then
@@ -1151,6 +1151,9 @@ AlbumProcess () {
 			metaflac "$file" --set-tag=GENRE="$album_genre"
 		done
 	fi
+
+	AddReplaygainTags
+
 	download_count=$(find $DownloadLocation/temp-complete -type f -iname "*.m4a" -o -iname "*.flac" | wc -l)
 	albumlog="$setlog $DL_TYPE :: $album_number OF $album_total :: $album_title${album_version} ::"
 	log "$albumlog Downloaded :: $download_count of $track_ids_count tracks"
