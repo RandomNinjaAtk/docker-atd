@@ -6,7 +6,7 @@ DownloadLocation="/downloads-atd"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 appears_on_enabled=false
 
-source $SCRIPT_DIR/resources/download.sh
+source $SCRIPT_DIR/resources/streamrip.sh
 
 Configuration () {
 	processstartid="$(ps -A -o pid,cmd|grep "start.bash" | grep -v grep | head -n 1 | awk '{print $1}')"
@@ -974,7 +974,7 @@ AlbumProcess () {
         fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 		
-		ClientDownloadMusic "--max-quality 2 https://tidal.com/browse/track/$track_id"
+		ClientDownload "--max-quality 2 https://tidal.com/browse/track/$track_id"
 		ClientDownloadMusicVerification
 		curl -s "$album_cover_url" -o "$DownloadLocation/temp/cover.jpg"
 		
