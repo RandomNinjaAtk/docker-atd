@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.098"
+	log "############# SCRIPT VERSION 1.0.0100"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -46,15 +46,6 @@ Configuration () {
 		log "Download Location: $DownloadLocation"
 	else
 	    log "ERROR: Download Location Not Found! (/downloads-atd)"
-		log "ERROR: To correct error, please add a \"$DownloadLocation\" volume"
-		error=1
-	fi
-
-	# verify downloads location
-	if [ -d "$DownloadLocation" ]; then
-		log "Download Location: $DownloadLocation"
-	else
-	    log "ERROR: Download Location Location Not Found! ($DownloadLocation)"
 		log "ERROR: To correct error, please add a \"$DownloadLocation\" volume"
 		error=1
 	fi
@@ -730,11 +721,10 @@ AlbumProcess () {
 	
 	deezer_track_album_id=""
 	album_data=""
-	album_data=$(curl -s "https://listen.tidal.com/v1/pages/album?albumId=$album_id&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
-	album_data_info=$(echo "$album_data" | jq -r '.rows[].modules[] | select(.type=="ALBUM_HEADER")')
-	album_title="$(echo "$album_data_info" | jq -r " .album.title")"
-	album_title_clean="$(echo "$album_data_info" | jq -r " .album.title" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
-	album_version="$(echo "$album_data_info" | jq -r " .album.version")"
+	album_data=$(curl -s "https://api.tidal.com/v1/albums/$album_id/?countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	album_title="$(echo "$album_data" | jq -r ".title")"
+	album_title_clean="$(echo "$album_data" | jq -r ".title" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
+	album_version="$(echo "$album_data" | jq -r ".version")"
 	if [ "$album_version" == "null" ]; then
 		album_version=""
 	elif echo "$album_title" | grep -i "$album_version" | read; then
@@ -758,20 +748,21 @@ AlbumProcess () {
 	elif echo $album_title | grep -i " live " | read; then
 		album_type="LIVE"
 	else
-		album_type="$(echo "$album_data_info" | jq -r " .album.type")"
+		album_type="$(echo "$album_data" | jq -r " .type")"
 		MetadataAlbumType="$album_type"
 	fi
 	MetadataAlbumType="${MetadataAlbumType,,}"
-
-	album_review="$(echo "$album_data_info" | jq -r " .review.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
-	album_cover_id="$(echo "$album_data_info" | jq -r " .album.cover")"
+	album_review=$(curl -s "https://api.tidal.com/v1/albums/$album_id/review?countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	album_review="$(echo "$album_review" | jq -r ".text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
+	album_cover_id="$(echo "$album_data" | jq -r ".cover")"
 	album_cover_id_fix=$(echo "$album_cover_id" | sed "s/-/\//g")
 	album_cover_url=https://resources.tidal.com/images/$album_cover_id_fix/1280x1280.jpg
-	album_copyright="$(echo "$album_data_info" | jq -r " .album.copyright")"
-	album_release_date="$(echo "$album_data_info" | jq -r " .album.releaseDate")"
+	album_copyright="$(echo "$album_data" | jq -r ".copyright")"
+	AlbumDuration="$(echo "$album_data" | jq -r ".duration")"
+	album_release_date="$(echo "$album_data" | jq -r ".releaseDate")"
 	album_release_year=${album_release_date:0:4}
-	album_artist_name="$(echo "$album_data_info" | jq -r ".album.artists[].name" | head -n 1)"
-	album_artist_id="$(echo "$album_data_info" | jq -r ".album.artists[].id" | head -n 1)"
+	album_artist_name="$(echo "$album_data" | jq -r ".artists[].name" | head -n 1)"
+	album_artist_id="$(echo "$album_data" | jq -r ".artists[].id" | head -n 1)"
 	album_artist_name_clean="$(echo "$album_artist_name" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 	album_folder_name="$album_artist_name_clean ($album_artist_id)/$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
 	albumlog="$albumlog $album_type :: $album_title${album_version} ::"
@@ -857,6 +848,56 @@ AlbumProcess () {
 		rm "/config/cache/${artist_id}-tidal-$album_id-creds_data.json"
 	fi
 	
+	tempoffset=100
+	album_tracks=$(curl -s "https://api.tidal.com/v1/albums/$album_id/items?limit=100&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+	album_tracks_total=$(echo "$album_tracks" | jq -r ".totalNumberOfItems")
+
+	if [ "$album_tracks_total" -gt "$tempoffset" ]; then
+		if [ ! -d "/config/temp" ]; then
+			mkdir "/config/temp"
+			sleep 0.1
+		else
+			rm -rf "/config/temp"
+			mkdir "/config/temp"
+			sleep 0.1
+		fi
+		offsetcount=$(( $album_tracks_total / $tempoffset ))
+		for ((i=0;i<=$offsetcount;i++)); do
+			if [ ! -f "release-page-$i.json" ]; then
+				if [ $i != 0 ]; then
+					offset=$(( $i * $tempoffset ))
+					dlnumber=$(( $offset + $tempoffset))
+				else
+					offset=0
+					dlnumber=$(( $offset + $tempoffset))
+				fi
+				log "$albumlog Downloading itemes page $i... ($offset - $dlnumber Results)"
+				curl -s "https://api.tidal.com/v1/albums/$album_id/items?&offset=$offset&limit=$tempoffset&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+				sleep 0.1
+			fi
+		done
+
+		if [ ! -f "/config/cache/${artist_id}-tidal-$album_id-items_data.json" ]; then
+			jq -s '.' /config/temp/${artist_id}-releases-page-*.json > "/config/cache/${artist_id}-tidal-$album_id-items_data.json"
+		fi
+
+		if [ -f "/config/cache/${artist_id}-tidal-$album_id-items_data.json" ]; then
+			rm /config/temp/${artist_id}-releases-page-*.json
+			sleep .01
+		fi
+
+		if [ -d "/config/temp" ]; then
+			sleep 0.1
+			rm -rf "/config/temp"
+		fi
+		
+		album_items=$(cat "/config/cache/${artist_id}-tidal-$album_id-items_data.json" | jq -r ".[]")
+		rm "/config/cache/${artist_id}-tidal-$album_id-items_data.json"
+	else
+		album_items=$(echo $album_tracks)
+	fi
+	
+
 	# echo "$album_data" > album_data.json
 	# echo "$album_cred" > album_cred.json
 	
@@ -877,7 +918,9 @@ AlbumProcess () {
     fi
 	
 	album_genre=""	
-	track_ids=$(echo "$album_data" | jq -r '.rows[].modules[] | select(.type=="ALBUM_ITEMS") | .pagedList.items[].item.id')
+	track_ids=$(echo "$album_items" | jq -r '.items[].item.id')
+
+
 	track_ids_count=$(echo "$track_ids" | wc -l)
 	track_ids=($(echo "$track_ids"))
 	for id in ${!track_ids[@]}; do
@@ -1231,11 +1274,13 @@ AlbumProcess () {
 			else
 				echo "	<review>$album_review</review>" >> "$nfo"
 			fi
+			echo "	<type>${MetadataAlbumType^}</type>" >> "$nfo"
 			if [ "$compilation" = "true" ]; then
 				echo "	<compilation>true</compilation>" >> "$nfo"
 			else
 				echo "	<compilation>false</compilation>" >> "$nfo"
 			fi
+			echo "	<duration>$AlbumDuration</duration>" >> "$nfo"
 			echo "	<albumArtistCredits>" >> "$nfo"
 			echo "		<artist>$album_artist_name</artist>" >> "$nfo"
 			echo "		<musicBrainzArtistID/>" >> "$nfo"
@@ -1250,7 +1295,6 @@ AlbumProcess () {
 			log "$albumlog NFO WRITER :: ALBUM NFO WRITTEN!"
 		fi
 	fi
-	
 	
 }
 
