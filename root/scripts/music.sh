@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.096"
+	log "############# SCRIPT VERSION 1.0.097"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -747,7 +747,13 @@ AlbumProcess () {
 		album_type="COMPILATION"
 	elif [ "$live" = "true" ]; then
 		album_type="LIVE"
-	elif echo $album_version_clean | grep "live" | read; then
+	elif echo $album_version_clean | grep -i "live" | read; then
+		album_type="LIVE"
+	elif echo $album_title | grep -i " (live)" | read; then
+		album_type="LIVE"
+	elif echo $album_title | grep -i " live)" | read; then
+		album_type="LIVE"
+	elif echo $album_title | grep -i " live " | read; then
 		album_type="LIVE"
 	else
 		album_type="$(echo "$album_data_info" | jq -r " .album.type")"
