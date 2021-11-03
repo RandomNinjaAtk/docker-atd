@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.097"
+	log "############# SCRIPT VERSION 1.0.098"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -745,8 +745,10 @@ AlbumProcess () {
 	album_version_clean="$(echo "$album_version" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 	if [ "$compilation" = "true" ]; then
 		album_type="COMPILATION"
+		MetadataAlbumType="COMPILATION"
 	elif [ "$live" = "true" ]; then
 		album_type="LIVE"
+		MetadataAlbumType="LIVE"
 	elif echo $album_version_clean | grep -i "live" | read; then
 		album_type="LIVE"
 	elif echo $album_title | grep -i " (live)" | read; then
@@ -757,7 +759,10 @@ AlbumProcess () {
 		album_type="LIVE"
 	else
 		album_type="$(echo "$album_data_info" | jq -r " .album.type")"
+		MetadataAlbumType="$album_type"
 	fi
+	MetadataAlbumType="${MetadataAlbumType,,}"
+
 	album_review="$(echo "$album_data_info" | jq -r " .review.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	album_cover_id="$(echo "$album_data_info" | jq -r " .album.cover")"
 	album_cover_id_fix=$(echo "$album_cover_id" | sed "s/-/\//g")
@@ -914,25 +919,9 @@ AlbumProcess () {
 				album_genre="${album_deezer_genre,,}"
 			fi
 		fi
-		#track_producer_ids=($(echo "$track_credits" | jq -r '.select(.role=="Producer") | .contributors[].id'))
-		#track_composer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Composer") | .contributors[].id'))
-		#track_lyricist_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.role=="Lyricist") | .contributors[].id'))
-		#track_mixer_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Mixer") | .contributors[].id'))
-		#track_studio_ids=($(echo "$track_credits" | jq -r '.credits[] | select(.type=="Studio Personnel") | .contributors[].id'))
-		#track_artist_id=$(echo "$track_credits" | jq -r ".item.artist.id")
-		#track_artist_name=$(echo "$track_data" | jq -r ".artist.name")
-		#track_artists_ids=($(echo "$track_data" | jq -r ".item.artists[].id"))
-		
-		#echo $track_data > track_data.json
-		#echo $track_credits > track_credits.json
 
 		OLDIFS="$IFS"
 		IFS=$'\n'
-		#producers=($(echo "$track_credits" | jq -r "select(.type==\"Producer\") | .contributors[].name"))
-		#composers=($(echo "$track_credits" | jq -r "select(.type==\"Composer\") | .contributors[].name"))
-		#lyricists=($(echo "$track_credits" | jq -r "select(.type==\"Lyricist\") | .contributors[].name"))
-		#mixers=($(echo "$track_credits" | jq -r ".select(.type==\"Mixer\") | .contributors[].name"))
-		#engineers=($(echo "$track_credits" | jq -r "select(.type==\"Studio Personnel\") | .contributors[].name"))
 		artists=($(echo "$track_data" | jq -r ".artists[].name"))
 		artists_main=($(echo "$track_data" | jq -r ".artists[] | select(.type==\"MAIN\") | .name"))
 		artists_feat=($(echo "$track_data" | jq -r ".artists[] | select(.type==\"FEATURED\") | .name"))
@@ -1108,6 +1097,8 @@ AlbumProcess () {
 				metaflac "$file" --set-tag=YEAR="$album_release_year"
 				metaflac "$file" --set-tag=DATE="$album_release_date"
 				metaflac "$file" --set-tag=ISRC="$track_isrc"
+				metaflac "$file" --set-tag=EXPLICIT="$track_explicit"
+				metaflac "$file" --set-tag=RELEASETYPE="${MetadataAlbumType^}"
 												
 				if [ "$compilation" = "true" ]; then
 					metaflac "$file" --set-tag=COMPILATION="1"
