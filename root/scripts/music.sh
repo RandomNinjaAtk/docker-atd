@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.095"
+	log "############# SCRIPT VERSION 1.0.096"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -116,11 +116,11 @@ log () {
 }
 
 AlbumFilter () {
-
-	IFS=', ' read -r -a filters <<< "$AlbumTypeFilter"
+	log "$albumlog Matching album type to filter: ${AlbumTypeFilter}"
+	IFS=', ' read -r -a filters <<< "${AlbumTypeFilter}"
 	for filter in "${filters[@]}"
 	do
-		if [ "$filter" == "$album_type " ]; then
+		if [ "$filter" == "$album_type" ]; then
 			filtermatch=true
 			filtertype="$filter"
 			break
@@ -747,6 +747,8 @@ AlbumProcess () {
 		album_type="COMPILATION"
 	elif [ "$live" = "true" ]; then
 		album_type="LIVE"
+	elif echo $album_version_clean | grep "live" | read; then
+		album_type="LIVE"
 	else
 		album_type="$(echo "$album_data_info" | jq -r " .album.type")"
 	fi
@@ -775,7 +777,7 @@ AlbumProcess () {
 				if [ ! -f /config/logs/filtered/$album_id ]; then
 					touch /config/logs/filtered/$album_id
 				fi
-				continue
+				return
 			fi
 		fi
 	if [ "$album_artist_id" -ne "$artist_id" ]; then
@@ -783,7 +785,7 @@ AlbumProcess () {
 			log "$albumlog ERROR :: ARTIST :: $album_artist_name ($album_artist_id) :: Not Wanted :: Skipping..."
 			return
 		else
-			log "$albumlog Varioud Artist Album Found :: Processing..."
+			log "$albumlog Various Artist Album Found :: Processing..."
 		fi
 	fi
 	if [ -d "$DownloadLocation/music/$album_folder_name" ]; then
