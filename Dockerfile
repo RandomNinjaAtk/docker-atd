@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.001"
+ENV VERSION="1.0.002"
 RUN \
 	echo "************ install dependencies ************" && \
 	echo "************ install and upgrade packages ************" && \
@@ -17,6 +17,7 @@ RUN \
 		python3 \
 		ffmpeg \
 		opus-tools \
+		tidy \
 		python3-pip && \
 	rm -rf \
 		/tmp/* \
@@ -28,9 +29,8 @@ RUN \
 		mutagen \
 		r128gain \
 		qtfaststart \
-		streamrip \
-		tidal-dl
- 
+		streamrip
+		
 # copy local files
 COPY root/ /
  
