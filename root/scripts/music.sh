@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0100"
+	log "############# SCRIPT VERSION 1.0.0101"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -1283,7 +1283,11 @@ AlbumProcess () {
 			echo "	<duration>$AlbumDuration</duration>" >> "$nfo"
 			echo "	<albumArtistCredits>" >> "$nfo"
 			echo "		<artist>$album_artist_name</artist>" >> "$nfo"
-			echo "		<musicBrainzArtistID/>" >> "$nfo"
+			if [ "$matched_id" == "true" ]; then
+				echo "		<musicBrainzArtistID>$musicbrainz_main_artist_id</musicBrainzArtistID>" >> "$nfo"
+			else
+				echo "		<musicBrainzArtistID/>" >> "$nfo"
+			fi
 			echo "	</albumArtistCredits>" >> "$nfo"
 			if [ -f "$DownloadLocation/music/$album_folder_name/cover.jpg" ]; then
 				echo "	<thumb>cover.jpg</thumb>" >> "$nfo"
