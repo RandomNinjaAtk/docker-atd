@@ -105,3 +105,12 @@ services:
       - EnableReplayGain=true
     restart: unless-stopped
 ```
+
+# Credits
+- [Original Idea based on lidarr-download-automation by Migz93](https://github.com/Migz93/lidarr-download-automation)
+- [streamrip download client](https://github.com/nathom/streamrip)
+- [Musicbrainz](https://musicbrainz.org/)
+- [Lidarr](https://lidarr.audio/)
+- [r128gain](https://github.com/desbma/r128gain)
+- [Algorithm Implementation/Strings/Levenshtein distance](https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance)
+- Icons made by <a href="http://www.freepik.com/" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
