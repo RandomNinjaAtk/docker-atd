@@ -1217,7 +1217,7 @@ AlbumProcess () {
 		chmod $FolderPermissions "$DownloadLocation/music/$album_artist_folder/$album_folder_name"
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
-		mv $DownloadLocation/temp-complete/* "$DownloadLocation/music/$album_folder_name"/
+		mv $DownloadLocation/temp-complete/* "$DownloadLocation/music/$album_artist_folder/$album_folder_name"/
 		chmod $FilePermisssions "$DownloadLocation/music/$album_artist_folder/$album_folder_name"/*
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
@@ -1259,7 +1259,7 @@ AlbumProcess () {
 		log "$albumlog NFO WRITER :: ARTIST NFO WRITTEN!"
 	fi
 	
-	nfo="$DownloadLocation/music/$album_folder_name/album.nfo"
+	nfo="$DownloadLocation/music/$album_artist_folder/$album_folder_name/album.nfo"
 	if [ -d "$DownloadLocation/music/$album_folder_name" ]; then
 		log "$albumlog NFO WRITER :: Writing Album NFO..."
 		if [ ! -f "$nfo" ]; then
