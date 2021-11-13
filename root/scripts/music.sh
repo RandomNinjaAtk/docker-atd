@@ -5,6 +5,8 @@ agent="automated-tidal-downloader ( https://github.com/RandomNinjaAtk/docker-atd
 DownloadLocation="/downloads-atd"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 appears_on_enabled=false
+FilePermisssions=666
+FolderPermissions=777
 
 source $SCRIPT_DIR/resources/streamrip.sh
 source $SCRIPT_DIR/resources/musicbrainz.sh
@@ -20,7 +22,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0102"
+	log "############# SCRIPT VERSION 1.0.0104"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -1223,6 +1225,8 @@ AlbumProcess () {
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
 		mv $DownloadLocation/temp-complete/* "$DownloadLocation/music/$album_folder_name"/
+		chmod $FolderPermissions "$DownloadLocation/music/$album_folder_name"
+		chmod $FilePermisssions "$DownloadLocation/music/$album_folder_name"/*
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
 		rm -rf "$DownloadLocation/temp-complete"
@@ -1258,6 +1262,7 @@ AlbumProcess () {
 		fi
 		echo "</artist>" >> "$nfo"
 		tidy -w 2000 -i -m -xml "$nfo" &>/dev/null
+		chmod $FilePermisssions "$nfo"
 		log "$albumlog NFO WRITER :: ARTIST NFO WRITTEN!"
 	fi
 	
@@ -1300,6 +1305,7 @@ AlbumProcess () {
 			fi
 			echo "</album>" >> "$nfo"
 			tidy -w 2000 -i -m -xml "$nfo" &>/dev/null
+			chmod $FilePermisssions "$nfo"
 			log "$albumlog NFO WRITER :: ALBUM NFO WRITTEN!"
 		fi
 	fi
