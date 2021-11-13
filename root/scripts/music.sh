@@ -22,7 +22,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0104"
+	log "############# SCRIPT VERSION 1.0.0105"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -202,9 +202,9 @@ ProcessArtist () {
 	
 	if [ ! -f /config/cache/${artist_id}-tidal-artist.json ]; then
 		#artist
-		curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU' -o "/config/cache/${artist_id}-tidal-artist.json"
+		artist_data=$(curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	fi
-	artist_data=$(cat "/config/cache/${artist_id}-tidal-artist.json")
+	#artist_data=$(cat "/config/cache/${artist_id}-tidal-artist.json")
 	artist_biography="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .bio.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.picture")"
 	artist_name="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.name")"
@@ -218,68 +218,51 @@ ProcessArtist () {
 		return
 	fi
 	
-	if [ ! -f "/config/cache/musicbrainz_$artist_id" ]; then
-		count="0"
-		query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://listen.tidal.com/artist/${artist_id}%22&fmt=json")
+	count="0"
+	query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://listen.tidal.com/artist/${artist_id}%22&fmt=json")
+	count=$(echo "$query_data" | jq -r ".count")
+	if [ "$count" == "0" ]; then
+		sleep 1.5
+		query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/artist/${artist_id}%22&fmt=json")
 		count=$(echo "$query_data" | jq -r ".count")
-		if [ "$count" == "0" ]; then
-			sleep 1.5
-			query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/artist/${artist_id}%22&fmt=json")
-			count=$(echo "$query_data" | jq -r ".count")
-			sleep 1.5
-		fi
+		sleep 1.5
+	fi
 		
-		if [ "$count" == "0" ]; then
-			query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22http://tidal.com/artist/${artist_id}%22&fmt=json")
-			count=$(echo "$query_data" | jq -r ".count")
-			sleep 1.5
-		fi
+	if [ "$count" == "0" ]; then
+		query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22http://tidal.com/artist/${artist_id}%22&fmt=json")
+		count=$(echo "$query_data" | jq -r ".count")
+		sleep 1.5
+	fi
 		
-		if [ "$count" == "0" ]; then
-			query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22http://tidal.com/browse/artist/${artist_id}%22&fmt=json")
-			count=$(echo "$query_data" | jq -r ".count")
-			sleep 1.5
-		fi
+	if [ "$count" == "0" ]; then
+		query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22http://tidal.com/browse/artist/${artist_id}%22&fmt=json")
+		count=$(echo "$query_data" | jq -r ".count")
+		sleep 1.5
+	fi
 		
-		if [ "$count" == "0" ]; then
-			query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/browse/artist/${artist_id}%22&fmt=json")
-			count=$(echo "$query_data" | jq -r ".count")
-		fi
+	if [ "$count" == "0" ]; then
+		query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/browse/artist/${artist_id}%22&fmt=json")
+		count=$(echo "$query_data" | jq -r ".count")
+	fi
 	
-		if [ "$count" != "0" ]; then
-			musicbrainz_main_artist_id=$(echo "$query_data" | jq -r '.urls[]."relation-list"[].relations[].artist.id' | head -n 1)
-			sleep 1.5
-			artist_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/artist/$musicbrainz_main_artist_id?fmt=json")
-			echo "$musicbrainz_main_artist_id" >> /config/cache/musicbrainz_$artist_id
-			artist_sort_name="$(echo "$artist_data" | jq -r '."sort-name"')"
-			artist_formed="$(echo "$artist_data" | jq -r '."begin-area".name')"
-			artist_born="$(echo "$artist_data" | jq -r '."life-span".begin')"
-			gender="$(echo "$artist_data" | jq -r ".gender")"
-			matched_id=true
-		else
-			matched_id=false
-			log "$setlog ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
-			
-			if [ ! -d "/config/logs/musicbrainz" ]; then
-				mkdir -p "/config/logs/musicbrainz"
-			fi
-			touch "/config/logs/musicbrainz-$artist_id"
-			return
-		fi
+	if [ "$count" != "0" ]; then
+		musicbrainz_main_artist_id=$(echo "$query_data" | jq -r '.urls[]."relation-list"[].relations[].artist.id' | head -n 1)
+		sleep 1.5
+		artist_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/artist/$musicbrainz_main_artist_id?fmt=json")
+		artist_sort_name="$(echo "$artist_data" | jq -r '."sort-name"')"
+		artist_formed="$(echo "$artist_data" | jq -r '."begin-area".name')"
+		artist_born="$(echo "$artist_data" | jq -r '."life-span".begin')"
+		gender="$(echo "$artist_data" | jq -r ".gender")"
+		matched_id=true
 	else
-		if [ ! -f "/config/logs/musicbrainz-$artist_id" ]; then
-			musicbrainz_main_artist_id="$(cat /config/cache/musicbrainz_$artist_id)"
-			artist_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/artist/$musicbrainz_main_artist_id?fmt=json")
-			artist_sort_name="$(echo "$artist_data" | jq -r '."sort-name"')"
-			artist_formed="$(echo "$artist_data" | jq -r '."begin-area".name')"
-			artist_born="$(echo "$artist_data" | jq -r '."life-span".begin')"
-			gender="$(echo "$artist_data" | jq -r ".gender")"
-			matched_id=true
-		else
-			log "$setlog ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
-			matched_id=false
-			return
+		matched_id=false
+		log "$setlog ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
+			
+		if [ ! -d "/config/logs/musicbrainz" ]; then
+			mkdir -p "/config/logs/musicbrainz"
 		fi
+		touch "/config/logs/musicbrainz-$artist_id"
+		return
 	fi
 	
 	videos_data=$(curl -s "https://listen.tidal.com/v1/pages/data/d6bd1f7f-2f93-4136-87ba-aa35d01692ba?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
@@ -319,7 +302,7 @@ ProcessArtist () {
 
 
 			if [ ! -f "/config/cache/${artist_id}-tidal-videos.json" ]; then
-				jq -s '.' /config/temp/${artist_id}-releases-page-*.json > "/config/cache/${artist_id}-tidal-videos.json"
+				ArtistVideos=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
 			fi
 
 			if [ -f "/config/cache/${artist_id}-tidal-videos.json" ]; then
@@ -332,8 +315,8 @@ ProcessArtist () {
 				rm -rf "/config/temp"
 			fi
 		fi
-		video_ids=$(cat "/config/cache/${artist_id}-tidal-videos.json" | jq -r ".[].items[].id")
-		videos_data=$(cat "/config/cache/${artist_id}-tidal-videos.json" | jq -r ".[]")
+		video_ids=$(echo "$ArtistVideos" | jq -r ".[].items[].id")
+		videos_data=$(echo "$ArtistVideos" | jq -r ".[]")
 	fi
 	video_titles="$(echo "$videos_data" | jq -r ".items[].title")"
 	
@@ -377,7 +360,7 @@ ProcessArtist () {
 
 
 				if [ ! -f "/config/cache/${artist_id}-tidal-albums.json" ]; then
-					jq -s '.' /config/temp/${artist_id}-releases-page-*.json > "/config/cache/${artist_id}-tidal-albums.json"
+					ArtistAlbums=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
 				fi
 
 				if [ -f "/config/cache/${artist_id}-tidal-albums.json" ]; then
@@ -390,8 +373,8 @@ ProcessArtist () {
 					rm -rf "/config/temp"
 				fi
 			fi
-			album_ids=$(cat "/config/cache/${artist_id}-tidal-albums.json" | jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-			albums_data=$(cat "/config/cache/${artist_id}-tidal-albums.json" | jq -r ".[]")
+			album_ids=$(echo "$ArtistAlbums" | jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
+			albums_data=$(echo "$ArtistAlbums" | jq -r ".[]")
 			
 		fi
 		#echo "albums: $albums_total"
@@ -766,7 +749,8 @@ AlbumProcess () {
 	album_artist_name="$(echo "$album_data" | jq -r ".artists[].name" | head -n 1)"
 	album_artist_id="$(echo "$album_data" | jq -r ".artists[].id" | head -n 1)"
 	album_artist_name_clean="$(echo "$album_artist_name" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
-	album_folder_name="$album_artist_name_clean ($album_artist_id)/$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
+	album_artist_folder="$album_artist_name_clean ($album_artist_id)"
+	album_folder_name="$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
 	albumlog="$albumlog $album_type :: $album_title${album_version} ::"
 
 	if echo "$album_data" | grep -i "DOLBY_ATMOS" | read; then
@@ -796,7 +780,7 @@ AlbumProcess () {
 			log "$albumlog Various Artist Album Found :: Processing..."
 		fi
 	fi
-	if [ -d "$DownloadLocation/music/$album_folder_name" ]; then
+	if [ -d "$DownloadLocation/music/$album_artist_folder/$album_folder_name" ]; then
 		log "$albumlog Already downloaded, skipping..."
 		return
 	fi
@@ -1219,14 +1203,22 @@ AlbumProcess () {
 		fi
 		return
 	fi
-	
-	if [ ! -d "$DownloadLocation/music/$album_folder_name" ]; then
-		mkdir -p "$DownloadLocation/music/$album_folder_name"
+
+	if [ ! -d "$DownloadLocation/music" ]; then
+		mkdir -p "$DownloadLocation/music"
+		chmod $FolderPermissions "$DownloadLocation/music"
+	fi
+	if [ ! -d "$DownloadLocation/music/$album_artist_folder" ]; then
+		mkdir -p "$DownloadLocation/music/$album_artist_folder"
+		chmod $FolderPermissions "$DownloadLocation/music/$album_artist_folder"
+	fi
+	if [ ! -d "$DownloadLocation/music/$album_artist_folder/$album_folder_name" ]; then
+		mkdir -p "$DownloadLocation/music/$album_artist_folder/$album_folder_name"
+		chmod $FolderPermissions "$DownloadLocation/music/$album_artist_folder/$album_folder_name"
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
 		mv $DownloadLocation/temp-complete/* "$DownloadLocation/music/$album_folder_name"/
-		chmod $FolderPermissions "$DownloadLocation/music/$album_folder_name"
-		chmod $FilePermisssions "$DownloadLocation/music/$album_folder_name"/*
+		chmod $FilePermisssions "$DownloadLocation/music/$album_artist_folder/$album_folder_name"/*
 	fi
 	if [ -d "$DownloadLocation/temp-complete" ]; then
 		rm -rf "$DownloadLocation/temp-complete"
@@ -1235,7 +1227,7 @@ AlbumProcess () {
 		rm -rf "$DownloadLocation/temp"
 	fi
 	
-	nfo="$DownloadLocation/music/$album_artist_name_clean ($album_artist_id)/artist.nfo"
+	nfo="$DownloadLocation/music/$album_artist_folder/artist.nfo"
 	if [ ! -f "$nfo" ]; then
 		log "$albumlog NFO WRITER :: Writing Artist NFO..."
 		echo "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" >> "$nfo"
@@ -1257,7 +1249,8 @@ AlbumProcess () {
 		if [ "$artist_picture_id" == "null" ]; then
 			echo "	<thumb/>" >> "$nfo"
 		else
-			curl -s "$thumb" -o "$DownloadLocation/music/$album_artist_name_clean ($album_artist_id)/poster.jpg"
+			curl -s "$thumb" -o "$DownloadLocation/music/$album_artist_folder/poster.jpg"
+			chmod $FilePermisssions "$DownloadLocation/music/$album_artist_folder/poster.jpg"
 			echo "	<thumb aspect=\"poster\" preview=\"poster.jpg\">poster.jpg</thumb>" >> "$nfo"
 		fi
 		echo "</artist>" >> "$nfo"
@@ -1298,7 +1291,7 @@ AlbumProcess () {
 				echo "		<musicBrainzArtistID/>" >> "$nfo"
 			fi
 			echo "	</albumArtistCredits>" >> "$nfo"
-			if [ -f "$DownloadLocation/music/$album_folder_name/cover.jpg" ]; then
+			if [ -f "$DownloadLocation/music/$album_artist_folder/$album_folder_name/cover.jpg" ]; then
 				echo "	<thumb>cover.jpg</thumb>" >> "$nfo"
 			else
 				echo "	<thumb/>" >> "$nfo"
