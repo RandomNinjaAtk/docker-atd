@@ -20,7 +20,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0101"
+	log "############# SCRIPT VERSION 1.0.0102"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -767,6 +767,10 @@ AlbumProcess () {
 	album_folder_name="$album_artist_name_clean ($album_artist_id)/$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
 	albumlog="$albumlog $album_type :: $album_title${album_version} ::"
 
+	if echo "$album_data" | grep -i "DOLBY_ATMOS" | read; then
+		log "$albumlog ERROR :: Album contains Dobly ATMOS tracks, skipping..."
+		return
+	fi
 
 	if [ $EnableAlbumFilter == true ]; then
 			AlbumFilter
