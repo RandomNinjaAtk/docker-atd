@@ -22,7 +22,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0106"
+	log "############# SCRIPT VERSION 1.0.0107"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -300,7 +300,7 @@ ProcessArtist () {
 	fi
 	video_titles="$(echo "$videos_data" | jq -r ".items[].title")"
 		
-	albums_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	albums_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	albums_total=$(echo "$albums_data" | jq -r ".totalNumberOfItems")
 	if [ ! $albums_total == "null" ]; then
 		if [ $albums_total -le 50 ]; then
@@ -325,7 +325,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -358,7 +358,7 @@ ProcessArtist () {
 
 	DL_TYPE="EP & SINGLES"
 	
-	single_ep_data=$(curl -s "https://listen.tidal.com/v1/pages/data/bb502cc2-58f7-4bd1-870a-265658fa36af?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	single_ep_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	single_ep_total=$(echo "$single_ep_data" | jq -r ".totalNumberOfItems")
 	if [ ! $single_ep_total == "null" ]; then
 		if [ $single_ep_total -le 50 ]; then
@@ -384,7 +384,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://listen.tidal.com/v1/pages/data/bb502cc2-58f7-4bd1-870a-265658fa36af?artistId=${artist_id}&offset=$offset&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -417,7 +417,11 @@ ProcessArtist () {
 		fi
 	fi
 	
-	compilations_data=$(curl -s "https://listen.tidal.com/v1/pages/data/9aee9d2e-3352-473e-b98e-4872e9e6c4c7?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	if [ $appears_on_enabled = false ]; then
+		return
+	fi
+	
+	compilations_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	compilations_total=$(echo "$compilations_data" | jq -r ".totalNumberOfItems")
 	# echo $compilations_data > comp_test.json
 	
@@ -446,7 +450,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://listen.tidal.com/v1/pages/data/9aee9d2e-3352-473e-b98e-4872e9e6c4c7?artistId=${artist_id}&offset=$offset&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -479,133 +483,8 @@ ProcessArtist () {
 		fi
 	fi
 	
-	live_data=$(curl -s "https://listen.tidal.com/v1/pages/data/81022451-77b3-4769-b611-5b29e34bb501?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
-	live_total=$(echo "$live_data" | jq -r ".totalNumberOfItems")
-	DL_TYPE="LIVE"
-	
-	if [ ! $live_total == "null" ]; then
-		if [ $live_total -le 50 ]; then
-			live_ids=$(echo "$live_data" | jq -r ".items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-		else
-			log "$setlog $DL_TYPE :: FINDING ALBUMS"
-			
-			if [ ! -f "/config/cache/${artist_id}-tidal-live_data.json" ]; then
-				if [ ! -d "/config/temp" ]; then
-					mkdir "/config/temp"
-					sleep 0.1
-				fi
-
-				offsetcount=$(( $live_total / 50 ))
-				for ((i=0;i<=$offsetcount;i++)); do
-					if [ ! -f "release-page-$i.json" ]; then
-						if [ $i != 0 ]; then
-							offset=$(( $i * 50 ))
-							dlnumber=$(( $offset + 50))
-						else
-							offset=0
-							dlnumber=$(( $offset + 50))
-						fi
-						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://listen.tidal.com/v1/pages/data/5667e093-4bce-4f14-9292-bfdc20c9c3fe?artistId=${artist_id}&offset=$offset&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
-						sleep 0.1
-					fi
-				done
-
-
-				ArtistLive=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
-				
-
-				if [ -f "/config/cache/${artist_id}-tidal-live_data.json" ]; then
-					rm /config/temp/${artist_id}-releases-page-*.json
-					sleep .01
-				fi
-
-				if [ -d "/config/temp" ]; then
-					sleep 0.1
-					rm -rf "/config/temp"
-				fi
-			fi
-			live_ids=$(echo "$ArtistLive" | jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-			live_data=$(echo "$ArtistLive" | jq -r ".[]")
-			
-		fi
-		#echo "live: $live_total"
-		live_ids=($(echo "$live_ids"))
-		if [ "$live_total" != "0" ]; then
-			DL_TYPE="LIVE"
-			for id in ${!live_ids[@]}; do
-				album_number=$(( $id + 1 ))
-				album_total="$live_total"
-				album_id="${live_ids[$id]}"
-				live=true
-				AlbumProcess $album_id
-				live=false
-			done
-		fi
-	fi
 	
 	
-	if [ $appears_on_enabled = false ]; then
-		return
-	fi
-	
-	appears_data=$(curl -s "https://listen.tidal.com/v1/pages/data/5667e093-4bce-4f14-9292-bfdc20c9c3fe?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
-	appears_total=$(echo "$appears_data" | jq -r ".totalNumberOfItems")
-	DL_TYPE="APPEARS ON"
-	if [ ! $appears_total == "null" ]; then
-		if [ $appears_total -le 50 ]; then
-			appears_ids=$(echo "$appears_data" | jq -r ".items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-		else
-			log "$setlog $DL_TYPE :: FINDING ALBUMS"
-			
-			
-			if [ ! -f "/config/cache/${artist_id}-tidal-appears_data.json" ]; then
-				if [ ! -d "/config/temp" ]; then
-					mkdir "/config/temp"
-					sleep 0.1
-				fi
-
-				offsetcount=$(( $appears_total / 50 ))
-				for ((i=0;i<=$offsetcount;i++)); do
-					if [ ! -f "release-page-$i.json" ]; then
-						if [ $i != 0 ]; then
-							offset=$(( $i * 50 ))
-							dlnumber=$(( $offset + 50))
-						else
-							offset=0
-							dlnumber=$(( $offset + 50))
-						fi
-						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://listen.tidal.com/v1/pages/data/5667e093-4bce-4f14-9292-bfdc20c9c3fe?artistId=${artist_id}&offset=$offset&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
-						sleep 0.1
-					fi
-				done
-
-
-				ArtistAppearsOn=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
-				
-
-				if [ -d "/config/temp" ]; then
-					rm /config/temp/${artist_id}-releases-page-*.json
-					sleep 0.1
-					rm -rf "/config/temp"
-				fi
-			fi
-			appears_ids=$(echo "$ArtistAppearsOn"| jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-			appears_data=$(echo "$ArtistAppearsOn" | jq -r ".[]")
-			
-		fi
-		#echo "appears: $appears_total"
-		appears_ids=($(echo "$appears_ids"))
-		if [ "$appears_total" != "0" ]; then
-			for id in ${!appears_ids[@]}; do
-				album_number=$(( $id + 1 ))
-				album_total="$appears_total"
-				album_id="${appears_ids[$id]}"
-				AlbumProcess $album_id
-			done
-		fi
-	fi
 
 }
 
