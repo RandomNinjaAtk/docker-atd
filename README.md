@@ -42,6 +42,12 @@ Container images are configured using parameters passed at runtime (such as thos
 | `-e MusicbrainzRateLimit=1` | OPTIONAL: musicbrainz rate limit, musicbrainz allows only 1 connection per second, max setting is 10 :: Set to 101 to disable limit |
 | `-e ScriptMode=both` | REQUIRED: set to: music or video or both :: both downloads music and videos, the others set the download to the desired media type |
 | `-e EnableReplayGain=true` | true = enabled :: Scans and analyzes files to add replaygain tags to song metadata |
+| `-e CountryCode=US` | Set to Tidal Region, same region as your account |
+| `-e Compilations=false` | false = disabled; true = enabled :: Enabling this downloads compilations the Artist Appears On... |
+| `-e FolderPermissions=777` | Folder Permissions (chmod) |
+| `-e FilePermisssions=666` | File Permissions (chmod)  |
+
+
 
 ## Instructions
 
@@ -71,6 +77,10 @@ docker create \
   -e MusicbrainzRateLimit=1 \
   -e ScriptMode=both \
   -e EnableReplayGain=true \
+  -e CountryCode=US \
+  -e Compilations=false \
+  -e FolderPermissions=777 \
+  -e FilePermisssions=666 \
   --restart unless-stopped \
   randomninjaatk/atd 
 ```
@@ -100,6 +110,10 @@ services:
       - MusicbrainzRateLimit=1
       - ScriptMode=both
       - EnableReplayGain=true
+      - CountryCode=US
+      - Compilations=false
+      - FolderPermissions=777
+      - FilePermisssions=666
     restart: unless-stopped
 ```
 
