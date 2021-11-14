@@ -4,9 +4,6 @@ export LANG=C.UTF-8
 agent="automated-tidal-downloader ( https://github.com/RandomNinjaAtk/docker-atd )"
 DownloadLocation="/downloads-atd"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-appears_on_enabled=false
-FilePermisssions=666
-FolderPermissions=777
 
 source $SCRIPT_DIR/resources/streamrip.sh
 source $SCRIPT_DIR/resources/musicbrainz.sh
@@ -22,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0109"
+	log "############# SCRIPT VERSION 1.0.0110"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -85,6 +82,40 @@ Configuration () {
 		log "WARNING: EnableReplayGain setting invalid, defaulting to: false"
 		EnableReplayGain="false"
 	fi
+	
+	if [ ! -z "$CountryCode" ]; then
+		log "$TITLESHORT: CountryCode: $CountryCode"
+	else
+		log "WARNING: CountryCode not set, defaulting to: US"
+		CountryCode="US"
+	fi
+	
+	if [ ! -z "$Compilations" ]; then
+		if [ "$Compilations" = "false" ]; then
+			log "$TITLESHORT: Compilations: Disabled (Appears On)"
+		else
+			log "$TITLESHORT: Compilations: Enabled (Appears On)"
+		fi
+	else
+		log "WARNING: Compilations not set, defaulting to: Disabled (Appears On)"
+		Compilations="false"
+	fi
+	
+	if [ ! -z "$FolderPermissions" ]; then
+		log "$TITLESHORT: FolderPermissions: $FolderPermissions"
+	else
+		log "WARNING: FolderPermissions not set, defaulting to: 777"
+		FolderPermissions=777
+	fi
+	
+	if [ ! -z "$FilePermisssions" ]; then
+		log "$TITLESHORT: FilePermisssions: $FilePermisssions"
+	else
+		log "WARNING: FilePermisssions not set, defaulting to: 666"
+		FilePermisssions=666
+	fi
+
+
 
 	if [ $error = 1 ]; then
 		log "Please correct errors before attempting to run script again..."
@@ -99,23 +130,6 @@ log () {
     echo $m_time" "$1
 }
 
-AlbumFilter () {
-	log "$albumlog Matching album type to filter: ${AlbumTypeFilter}"
-	IFS=', ' read -r -a filters <<< "${AlbumTypeFilter}"
-	for filter in "${filters[@]}"
-	do
-		if [ "$filter" == "$album_type" ]; then
-			filtermatch=true
-			filtertype="$filter"
-			break
-		else
-			filtermatch=false
-			filtertype=""
-			continue
-		fi
-	done
-
-}
 
 LidarrConnection () {
 
@@ -186,7 +200,7 @@ ProcessArtist () {
 		sleep 0.1
 	fi
 
-	artist_data=$(curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+	artist_data=$(curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	artist_biography="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .bio.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.picture")"
 	artist_name="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.name")"
@@ -247,7 +261,7 @@ ProcessArtist () {
 		return
 	fi
 	
-	videos_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=US&offset=0&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	videos_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=$CountryCode&offset=0&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	items_total=$(echo "$videos_data" | jq -r ".totalNumberOfItems")
 	if [ $items_total -le 50 ]; then
 		video_ids=$(echo "$videos_data" | jq -r ".items[].id")
@@ -271,7 +285,7 @@ ProcessArtist () {
 						dlnumber=$(( $offset + 50))
 					fi
 					log "$setlog Tidal CACHE :: $LidArtistNameCap :: Downloading Releases page $i... ($offset - $dlnumber Results)"
-					curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=US&&offset=$offset&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+					curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=$CountryCode&&offset=$offset&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 					sleep 0.1
 				fi
 			done
@@ -291,7 +305,7 @@ ProcessArtist () {
 	fi
 	video_titles="$(echo "$videos_data" | jq -r ".items[].title")"
 		
-	albums_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	albums_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=0&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	albums_total=$(echo "$albums_data" | jq -r ".totalNumberOfItems")
 	if [ ! $albums_total == "null" ]; then
 		if [ $albums_total -le 50 ]; then
@@ -316,7 +330,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=$offset&limit=50&filter=ALBUMS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -349,7 +363,7 @@ ProcessArtist () {
 
 	DL_TYPE="EP & SINGLES"
 	
-	single_ep_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	single_ep_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=0&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	single_ep_total=$(echo "$single_ep_data" | jq -r ".totalNumberOfItems")
 	if [ ! $single_ep_total == "null" ]; then
 		if [ $single_ep_total -le 50 ]; then
@@ -375,7 +389,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=$offset&limit=50&filter=EPSANDSINGLES" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -408,11 +422,11 @@ ProcessArtist () {
 		fi
 	fi
 	
-	if [ $appears_on_enabled = false ]; then
+	if [ "$Compilations" = "false" ]; then
 		return
 	fi
 	
-	compilations_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=0&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	compilations_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=0&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	compilations_total=$(echo "$compilations_data" | jq -r ".totalNumberOfItems")
 	# echo $compilations_data > comp_test.json
 	
@@ -441,7 +455,7 @@ ProcessArtist () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=US&offset=$offset&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=$offset&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -500,7 +514,7 @@ AlbumProcess () {
 	
 	deezer_track_album_id=""
 	album_data=""
-	album_data=$(curl -s "https://api.tidal.com/v1/albums/$album_id/?countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+	album_data=$(curl -s "https://api.tidal.com/v1/albums/$album_id/?countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 	album_title="$(echo "$album_data" | jq -r ".title")"
 	album_title_clean="$(echo "$album_data" | jq -r ".title" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 	album_version="$(echo "$album_data" | jq -r ".version")"
@@ -561,7 +575,7 @@ AlbumProcess () {
 		fi
 	fi
 
-	album_cred=$(curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=0&limit=100&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+	album_cred=$(curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=0&limit=100&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	album_cred_total=$(echo "$album_cred" | jq -r ".totalNumberOfItems")
 
 	if [ "$album_cred_total" -gt "100" ]; then
@@ -584,7 +598,7 @@ AlbumProcess () {
 					dlnumber=$(( $offset + 100))
 				fi
 				log "$albumlog Downloading itemes page $i... ($offset - $dlnumber Results)"
-				curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=$offset&limit=100&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+				curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=$offset&limit=100&countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 				sleep 0.1
 			fi
 		done
@@ -608,7 +622,7 @@ AlbumProcess () {
 	fi
 	
 	tempoffset=100
-	album_tracks=$(curl -s "https://api.tidal.com/v1/albums/$album_id/items?limit=100&countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+	album_tracks=$(curl -s "https://api.tidal.com/v1/albums/$album_id/items?limit=100&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	album_tracks_total=$(echo "$album_tracks" | jq -r ".totalNumberOfItems")
 
 	if [ "$album_tracks_total" -gt "$tempoffset" ]; then
@@ -631,7 +645,7 @@ AlbumProcess () {
 					dlnumber=$(( $offset + $tempoffset))
 				fi
 				log "$albumlog Downloading itemes page $i... ($offset - $dlnumber Results)"
-				curl -s "https://api.tidal.com/v1/albums/$album_id/items?&offset=$offset&limit=$tempoffset&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+				curl -s "https://api.tidal.com/v1/albums/$album_id/items?&offset=$offset&limit=$tempoffset&countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
 				sleep 0.1
 			fi
 		done
@@ -685,8 +699,8 @@ AlbumProcess () {
 	for id in ${!track_ids[@]}; do
 		track_id_number=$(( $id + 1 ))
 		track_id="${track_ids[$id]}"
-		track_data=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/?countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
-		track_credits=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/contributors?countryCode=US" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+		track_data=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+		track_credits=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/contributors?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 		#echo $track_data > track_data.json
 		#exit
 		#echo $track_credits | jq -r
