@@ -22,7 +22,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0108"
+	log "############# SCRIPT VERSION 1.0.0109"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -524,17 +524,6 @@ AlbumProcess () {
 	if [ "$compilation" = "true" ]; then
 		album_type="COMPILATION"
 		MetadataAlbumType="COMPILATION"
-	elif [ "$live" = "true" ]; then
-		album_type="LIVE"
-		MetadataAlbumType="LIVE"
-	elif echo $album_version_clean | grep -i "live" | read; then
-		album_type="LIVE"
-	elif echo $album_title | grep -i " (live)" | read; then
-		album_type="LIVE"
-	elif echo $album_title | grep -i " live)" | read; then
-		album_type="LIVE"
-	elif echo $album_title | grep -i " live " | read; then
-		album_type="LIVE"
 	else
 		album_type="$(echo "$album_data" | jq -r " .type")"
 		MetadataAlbumType="$album_type"
@@ -561,20 +550,6 @@ AlbumProcess () {
 		return
 	fi
 
-	if [ $EnableAlbumFilter == true ]; then
-			AlbumFilter
-		
-			if [ $filtermatch == true ]; then
-				log "$albumlog ERROR :: Album Type matched unwanted filter "$filtertype", skipping..."
-				if [ ! -d /config/logs/filtered ]; then
-					mkdir -p /config/logs/filtered
-				fi
-				if [ ! -f /config/logs/filtered/$album_id ]; then
-					touch /config/logs/filtered/$album_id
-				fi
-				return
-			fi
-		fi
 	if [ "$album_artist_id" -ne "$artist_id" ]; then
 		if [ "$album_artist_id" -ne "2935" ]; then
 			log "$albumlog ERROR :: ARTIST :: $album_artist_name ($album_artist_id) :: Not Wanted :: Skipping..."
