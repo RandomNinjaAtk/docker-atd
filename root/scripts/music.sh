@@ -86,15 +86,6 @@ Configuration () {
 		EnableReplayGain="false"
 	fi
 
-	if [ ! -z "$AlbumTypeFilter" ]; then
-		EnableAlbumFilter=true
-		log "$TITLESHORT: Album Type Filter: ENABLED"
-		log "$TITLESHORT: Filtering: $AlbumTypeFilter"		
-	else
-		EnableAlbumFilter=false
-		log "$TITLESHORT: Album Type Filter: DISABLED"
-	fi
-
 	if [ $error = 1 ]; then
 		log "Please correct errors before attempting to run script again..."
 		log "Exiting..."
