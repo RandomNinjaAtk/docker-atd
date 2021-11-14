@@ -22,7 +22,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0107"
+	log "############# SCRIPT VERSION 1.0.0108"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -1063,7 +1063,7 @@ AlbumProcess () {
 	fi
 	
 	nfo="$DownloadLocation/music/$album_artist_folder/$album_folder_name/album.nfo"
-	if [ -d "$DownloadLocation/music/$album_folder_name" ]; then
+	if [ -d "$DownloadLocation/music/$album_artist_folder/$album_folder_name" ]; then
 		log "$albumlog NFO WRITER :: Writing Album NFO..."
 		if [ ! -f "$nfo" ]; then
 			echo "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" >> "$nfo"
