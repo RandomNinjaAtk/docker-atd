@@ -41,7 +41,6 @@ Container images are configured using parameters passed at runtime (such as thos
 | `-e MusicbrainzMirror=https://musicbrainz.org` | OPTIONAL :: Only change if using a different mirror |
 | `-e MusicbrainzRateLimit=1` | OPTIONAL: musicbrainz rate limit, musicbrainz allows only 1 connection per second, max setting is 10 :: Set to 101 to disable limit |
 | `-e ScriptMode=both` | REQUIRED: set to: music or video or both :: both downloads music and videos, the others set the download to the desired media type |
-| `-e AlbumTypeFilter=LIVE` | Filter Types: COMPILATION, SINGLE, ALBUM, EP, LIVE (this is a ", " separated list of Album Types to skip) |
 | `-e EnableReplayGain=true` | true = enabled :: Scans and analyzes files to add replaygain tags to song metadata |
 
 ## Instructions
@@ -71,7 +70,6 @@ docker create \
   -e MusicbrainzMirror=https://musicbrainz.org \
   -e MusicbrainzRateLimit=1 \
   -e ScriptMode=both \
-  -e AlbumTypeFilter=LIVE \
   -e EnableReplayGain=true \
   --restart unless-stopped \
   randomninjaatk/atd 
@@ -101,7 +99,6 @@ services:
       - MusicbrainzMirror=https://musicbrainz.org
       - MusicbrainzRateLimit=1
       - ScriptMode=both
-      - AlbumTypeFilter=LIVE
       - EnableReplayGain=true
     restart: unless-stopped
 ```
