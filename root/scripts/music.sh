@@ -143,9 +143,9 @@ LidarrConnection () {
 		mbid="${lidarrlist[$id]}"
 		artistdata=$(echo "${lidarrdata}" | jq -r ".[] | select(.foreignArtistId==\"${mbid}\")")
 		artistname="$(echo "${artistdata}" | jq -r " .artistName")"
-        	artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
+       	artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
 		sanitizedartistname="$(basename "${artistnamepath}" | sed 's% (.*)$%%g')"
-        	totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mp4" | wc -l)
+        totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mp4" | wc -l)
         if [ -f "/config/logs/$sanitizedartistname-$mbid-music-complete" ]; then
             if ! [[ $(find "/config/logs/$sanitizedartistname-$mbid-musiccomplete" -mtime +7 -print) ]]; then
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Already downloaded all ($totaldownloadcount) videos, skipping until expires..."
@@ -156,7 +156,7 @@ LidarrConnection () {
         mbzartistinfo=$(curl -s -A "$agent" "${MusicbrainzMirror}/ws/2/artist/$mbid?inc=url-rels+genres&fmt=json")
         sleep 1
         tidalurl="$(echo "$mbzartistinfo" | jq -r ".relations | .[] | .url | select(.resource | contains(\"tidal\")) | .resource" | head -n 1)"
-	tidalartistid="$(echo "$tidalurl" | grep -o '[[:digit:]]*')"
+		tidalartistid="$(echo "$tidalurl" | grep -o '[[:digit:]]*')"
         if [ -z "$tidalurl" ]; then 
             mbzartistinfo=$(curl -s -A "$agent" "${MusicbrainzMirror}/ws/2/artist/$mbid?inc=url-rels+genres&fmt=json")
             tidalurl="$(echo "$mbzartistinfo" | jq -r ".relations | .[] | .url | select(.resource | contains(\"tidal\")) | .resource" | head -n 1)"
@@ -176,8 +176,8 @@ LidarrConnection () {
         if [ -f "/config/logs/error/$sanitizedartistname.log" ]; then        
             rm "/config/logs/error/$sanitizedartistname.log"
         fi
-		ClientSelfTest
-        	log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
+		
+        log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
 		logheader="$artistnumber of $artisttotal"
 		artist_id=$tidalartistid
 		ProcessArtist
@@ -200,6 +200,16 @@ ProcessArtist () {
 		sleep 0.1
 	fi
 
+	if [ -f "/config/logs/musicbrainz-$artist_id" ]; then
+		log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
+		return
+	fi
+
+	if [ -f "/config/logs/completed/artists/${artist_id}" ]; then
+		log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Artist previously archived... :: SKIPPING"
+		return
+	fi
+
 	artist_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	artist_biography="$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU'| jq -r ".text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".picture")"
@@ -210,15 +220,7 @@ ProcessArtist () {
 	setlog="$artistnumber of $artisttotal :: $artist_name ::"
 	log "$setlog PROCESSING"
 
-	if [ -f "/config/logs/musicbrainz-$artist_id" ]; then
-		log "$setlog ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
-		return
-	fi
-
-	if [ -f "/config/logs/completed/artists/${artist_id}" ]; then
-		log "$setlog Artist previously archived... :: SKIPPING"
-		return
-	fi
+	ClientSelfTest
 
 	count="0"
 	query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://listen.tidal.com/artist/${artist_id}%22&fmt=json")
