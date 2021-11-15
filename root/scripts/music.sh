@@ -143,9 +143,9 @@ LidarrConnection () {
 		mbid="${lidarrlist[$id]}"
 		artistdata=$(echo "${lidarrdata}" | jq -r ".[] | select(.foreignArtistId==\"${mbid}\")")
 		artistname="$(echo "${artistdata}" | jq -r " .artistName")"
-        artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
+        	artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
 		sanitizedartistname="$(basename "${artistnamepath}" | sed 's% (.*)$%%g')"
-        totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mp4" | wc -l)
+        	totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mp4" | wc -l)
         if [ -f "/config/logs/$sanitizedartistname-$mbid-music-complete" ]; then
             if ! [[ $(find "/config/logs/$sanitizedartistname-$mbid-musiccomplete" -mtime +7 -print) ]]; then
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Already downloaded all ($totaldownloadcount) videos, skipping until expires..."
@@ -156,7 +156,7 @@ LidarrConnection () {
         mbzartistinfo=$(curl -s -A "$agent" "${MusicbrainzMirror}/ws/2/artist/$mbid?inc=url-rels+genres&fmt=json")
         sleep 1
         tidalurl="$(echo "$mbzartistinfo" | jq -r ".relations | .[] | .url | select(.resource | contains(\"tidal\")) | .resource" | head -n 1)"
-	    tidalartistid="$(echo "$tidalurl" | grep -o '[[:digit:]]*')"
+	tidalartistid="$(echo "$tidalurl" | grep -o '[[:digit:]]*')"
         if [ -z "$tidalurl" ]; then 
             mbzartistinfo=$(curl -s -A "$agent" "${MusicbrainzMirror}/ws/2/artist/$mbid?inc=url-rels+genres&fmt=json")
             tidalurl="$(echo "$mbzartistinfo" | jq -r ".relations | .[] | .url | select(.resource | contains(\"tidal\")) | .resource" | head -n 1)"
@@ -177,7 +177,7 @@ LidarrConnection () {
             rm "/config/logs/error/$sanitizedartistname.log"
         fi
 		ClientSelfTest
-        log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
+        	log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
 		logheader="$artistnumber of $artisttotal"
 		artist_id=$tidalartistid
 		ProcessArtist
@@ -200,10 +200,10 @@ ProcessArtist () {
 		sleep 0.1
 	fi
 
-	artist_data=$(curl -s "https://listen.tidal.com/v1/pages/artist?artistId=${artist_id}&locale=en_US&deviceType=BROWSER&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
-	artist_biography="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .bio.text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
-	artist_picture_id="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.picture")"
-	artist_name="$(echo "$artist_data" | jq -r ".rows[].modules[] | select(.type==\"ARTIST_HEADER\") | .artist.name")"
+	artist_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
+	artist_biography="$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU'| jq -r ".text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
+	artist_picture_id="$(echo "$artist_data" | jq -r ".picture")"
+	artist_name="$(echo "$artist_data" | jq -r "..name")"
 	artist_picture_id_fix=$(echo "$artist_picture_id" | sed "s/-/\//g")
 	thumb="https://resources.tidal.com/images/$artist_picture_id_fix/750x750.jpg"
 	log "$logheader :: $artist_name"
@@ -569,56 +569,10 @@ AlbumProcess () {
 	fi
 		
 	if [ -d "$DownloadLocation/music" ]; then
-		if find "$DownloadLocation/music" -type d -iname "$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ([[[:digit:]][[:digit:]]*[[:digit:]][[:digit:]])" | read; then
+		if find "$DownloadLocation/music/$album_artist_folder" -type d -iname "$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ([[[:digit:]][[:digit:]]*[[:digit:]][[:digit:]])" | read; then
 			log "$albumlog Already downloaded, skipping..."
 			return
 		fi
-	fi
-
-	album_cred=$(curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=0&limit=100&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
-	album_cred_total=$(echo "$album_cred" | jq -r ".totalNumberOfItems")
-
-	if [ "$album_cred_total" -gt "100" ]; then
-		if [ ! -d "/config/temp" ]; then
-			mkdir "/config/temp"
-			sleep 0.1
-		else
-			rm -rf "/config/temp"
-			mkdir "/config/temp"
-			sleep 0.1
-		fi
-		offsetcount=$(( $album_cred_total / 100 ))
-		for ((i=0;i<=$offsetcount;i++)); do
-			if [ ! -f "release-page-$i.json" ]; then
-				if [ $i != 0 ]; then
-					offset=$(( $i * 100 ))
-					dlnumber=$(( $offset + 100))
-				else
-					offset=0
-					dlnumber=$(( $offset + 100))
-				fi
-				log "$albumlog Downloading itemes page $i... ($offset - $dlnumber Results)"
-				curl -s "https://listen.tidal.com/v1/albums/$album_id/items/credits?replace=true&includeContributors=true&offset=$offset&limit=100&countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
-				sleep 0.1
-			fi
-		done
-
-		if [ ! -f "/config/cache/${artist_id}-tidal-$album_id-creds_data.json" ]; then
-			jq -s '.' /config/temp/${artist_id}-releases-page-*.json > "/config/cache/${artist_id}-tidal-$album_id-creds_data.json"
-		fi
-
-		if [ -f "/config/cache/${artist_id}-tidal-$album_id-creds_data.json" ]; then
-			rm /config/temp/${artist_id}-releases-page-*.json
-			sleep .01
-		fi
-
-		if [ -d "/config/temp" ]; then
-			sleep 0.1
-			rm -rf "/config/temp"
-		fi
-		
-		album_cred=$(cat "/config/cache/${artist_id}-tidal-$album_id-creds_data.json" | jq -r ".[]")
-		rm "/config/cache/${artist_id}-tidal-$album_id-creds_data.json"
 	fi
 	
 	tempoffset=100
@@ -669,26 +623,10 @@ AlbumProcess () {
 	else
 		album_items=$(echo $album_tracks)
 	fi
-	
-
-	# echo "$album_data" > album_data.json
-	# echo "$album_cred" > album_cred.json
-	
-	
-	#echo $album_title
-	#echo $album_type
-	#echo $album_cover_url
-	#echo $album_review
-	#echo $album_copyright
-	#echo $album_release_date
-	#echo $album_release_year
-	#echo "$album_artist_name"
-	
-	#exit
 
 	if [ -d "$DownloadLocation/temp-complete" ]; then
-        rm -rf "$DownloadLocation/temp-complete"
-    fi
+       		rm -rf "$DownloadLocation/temp-complete"
+   	fi
 	
 	album_genre=""	
 	track_ids=$(echo "$album_items" | jq -r '.items[].item.id')
@@ -701,11 +639,6 @@ AlbumProcess () {
 		track_id="${track_ids[$id]}"
 		track_data=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 		track_credits=$(curl -s "https://api.tidal.com/v1/tracks/$track_id/contributors?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
-		#echo $track_data > track_data.json
-		#exit
-		#echo $track_credits | jq -r
-		sleep 1
-		
 		track_title="$(echo "$track_data" | jq -r ".title")"
 		track_title_clean="$(echo "$track_title" | sed -e 's/[\\/:\*\?"<>\|\x01-\x1F\x7F]//g'  -e "s/  */ /g")"
 		track_version="$(echo "$track_data" | jq -r ".version")"
@@ -810,8 +743,8 @@ AlbumProcess () {
 		deezer_track_album_genres=""
 		
 		if [ -d "$DownloadLocation/temp" ]; then
-            rm -rf "$DownloadLocation/temp"
-        fi
+        		rm -rf "$DownloadLocation/temp"
+       		fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 		
 		ClientDownload "--max-quality 2 https://tidal.com/browse/track/$track_id"
@@ -821,6 +754,7 @@ AlbumProcess () {
 		#find $DownloadLocation/Album -type f -iname "*.m4a" -exec qtfaststart "{}" \; &>/dev/null
 		flacfile=""
 		m4afile=""
+		
 		flacfile="$(find $DownloadLocation/temp -type f -iname "*.flac")"
 		m4afile="$(find $DownloadLocation/temp -type f -iname "*.m4a")"
 
@@ -954,9 +888,9 @@ AlbumProcess () {
 		
 		
 		if [ -d "$DownloadLocation/temp" ]; then
-            find $DownloadLocation/temp -type f -exec mv "{}" "$DownloadLocation/temp-complete/" \;
+            		find $DownloadLocation/temp -type f -exec mv "{}" "$DownloadLocation/temp-complete/" \;
 			rm -rf "$DownloadLocation/temp"
-        fi
+      		fi
 		
 		
 	done
