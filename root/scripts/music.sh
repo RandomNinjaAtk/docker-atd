@@ -42,32 +42,32 @@ Configuration () {
 	
 	# verify downloads location
 	if [ -d "/downloads-atd" ]; then
-		log "Download Location: $DownloadLocation"
+		log "$TITLESHORT: Download Location: $DownloadLocation"
 	else
-	    log "ERROR: Download Location Not Found! (/downloads-atd)"
-		log "ERROR: To correct error, please add a \"$DownloadLocation\" volume"
+	    log "$TITLESHORT: ERROR: Download Location Not Found! (/downloads-atd)"
+		log "$TITLESHORT: ERROR: To correct error, please add a \"$DownloadLocation\" volume"
 		error=1
 	fi
 
 	SOURCE_CONNECTION="lidarr"
 
 	if [ "$SOURCE_CONNECTION" == "lidarr" ]; then
-		log "Music Video Artist List Source: $SOURCE_CONNECTION"
+		log "$TITLESHORT: Artist List Source: $SOURCE_CONNECTION"
 
 		# Verify Lidarr Connectivity
 		lidarrtest=$(curl -s "$LidarrUrl/api/v1/system/status?apikey=${LidarrApiKey}" | jq -r ".version")
 		if [ ! -z "$lidarrtest" ]; then
 			if [ "$lidarrtest" != "null" ]; then
-				log "Music Video Source: Lidarr Connection Valid, version: $lidarrtest"
+				log "$TITLESHORT: Lidarr Connection Valid, version: $lidarrtest"
 			else
-				log "ERROR: Cannot communicate with Lidarr, most likely a...."
+				log "$TITLESHORT: ERROR: Cannot communicate with Lidarr, most likely a...."
 				log "ERROR: Invalid API Key: $LidarrApiKey"
 				error=1
 			fi
 		else
-			log "ERROR: Cannot communicate with Lidarr, no response"
-			log "ERROR: URL: $LidarrUrl"
-			log "ERROR: API Key: $LidarrApiKey"
+			log "$TITLESHORT: ERROR: Cannot communicate with Lidarr, no response"
+			log "$TITLESHORT: ERROR: URL: $LidarrUrl"
+			log "$TITLESHORT: ERROR: API Key: $LidarrApiKey"
 			error=1
 		fi
 	fi
@@ -79,14 +79,14 @@ Configuration () {
 			log "$TITLESHORT: Replaygain Tagging: DISABLED"
 		fi
 	else
-		log "WARNING: EnableReplayGain setting invalid, defaulting to: false"
+		log "$TITLESHORT: WARNING: EnableReplayGain setting invalid, defaulting to: false"
 		EnableReplayGain="false"
 	fi
 	
 	if [ ! -z "$CountryCode" ]; then
 		log "$TITLESHORT: CountryCode: $CountryCode"
 	else
-		log "WARNING: CountryCode not set, defaulting to: US"
+		log "$TITLESHORT: WARNING: CountryCode not set, defaulting to: US"
 		CountryCode="US"
 	fi
 	
@@ -97,21 +97,21 @@ Configuration () {
 			log "$TITLESHORT: Compilations: Enabled (Appears On)"
 		fi
 	else
-		log "WARNING: Compilations not set, defaulting to: Disabled (Appears On)"
+		log "$TITLESHORT: WARNING: Compilations not set, defaulting to: Disabled (Appears On)"
 		Compilations="false"
 	fi
 	
 	if [ ! -z "$FolderPermissions" ]; then
 		log "$TITLESHORT: FolderPermissions: $FolderPermissions"
 	else
-		log "WARNING: FolderPermissions not set, defaulting to: 777"
+		log "$TITLESHORT: WARNING: FolderPermissions not set, defaulting to: 777"
 		FolderPermissions=777
 	fi
 	
 	if [ ! -z "$FilePermisssions" ]; then
 		log "$TITLESHORT: FilePermisssions: $FilePermisssions"
 	else
-		log "WARNING: FilePermisssions not set, defaulting to: 666"
+		log "$TITLESHORT: WARNING: FilePermisssions not set, defaulting to: 666"
 		FilePermisssions=666
 	fi
 
@@ -203,7 +203,7 @@ ProcessArtist () {
 	artist_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	artist_biography="$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU'| jq -r ".text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".picture")"
-	artist_name="$(echo "$artist_data" | jq -r "..name")"
+	artist_name="$(echo "$artist_data" | jq -r ".name")"
 	artist_picture_id_fix=$(echo "$artist_picture_id" | sed "s/-/\//g")
 	thumb="https://resources.tidal.com/images/$artist_picture_id_fix/750x750.jpg"
 	log "$logheader :: $artist_name"
