@@ -209,11 +209,17 @@ ProcessArtist () {
 	log "$logheader :: $artist_name"
 	setlog="$artistnumber of $artisttotal :: $artist_name ::"
 	log "$setlog PROCESSING"
+
 	if [ -f "/config/logs/musicbrainz-$artist_id" ]; then
 		log "$setlog ERROR :: Cannot Find MusicBrainz Artist Match... :: SKIPPING"
 		return
 	fi
-	
+
+	if [ -f "/config/logs/completed/artists/${artist_id}" ]; then
+		log "$setlog Artist previously archived... :: SKIPPING"
+		return
+	fi
+
 	count="0"
 	query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://listen.tidal.com/artist/${artist_id}%22&fmt=json")
 	count=$(echo "$query_data" | jq -r ".count")
@@ -422,74 +428,77 @@ ProcessArtist () {
 		fi
 	fi
 	
-	if [ "$Compilations" = "false" ]; then
-		return
-	fi
-	
-	compilations_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=0&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
-	compilations_total=$(echo "$compilations_data" | jq -r ".totalNumberOfItems")
-	# echo $compilations_data > comp_test.json
-	
-	DL_TYPE="COMPILATIONS"
-	if [ ! $compilations_total == "null" ]; then
-		if [ $compilations_total -le 50 ]; then
-			compilations_ids=$(echo "$compilations_data" | jq -r ".items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-		else
-			log "$setlog $DL_TYPE :: FINDING ALBUMS"
-			
-			
-			if [ ! -f "/config/cache/${artist_id}-tidal-compilations_data.json" ]; then
-				if [ ! -d "/config/temp" ]; then
-					mkdir "/config/temp"
-					sleep 0.1
-				fi
-
-				offsetcount=$(( $compilations_total / 50 ))
-				for ((i=0;i<=$offsetcount;i++)); do
-					if [ ! -f "release-page-$i.json" ]; then
-						if [ $i != 0 ]; then
-							offset=$(( $i * 50 ))
-							dlnumber=$(( $offset + 50))
-						else
-							offset=0
-							dlnumber=$(( $offset + 50))
-						fi
-						log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
-						curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=$offset&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+	if [ "$Compilations" = "true" ]; then
+		
+		compilations_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=0&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+		compilations_total=$(echo "$compilations_data" | jq -r ".totalNumberOfItems")
+		# echo $compilations_data > comp_test.json
+		
+		DL_TYPE="COMPILATIONS"
+		if [ ! $compilations_total == "null" ]; then
+			if [ $compilations_total -le 50 ]; then
+				compilations_ids=$(echo "$compilations_data" | jq -r ".items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
+			else
+				log "$setlog $DL_TYPE :: FINDING ALBUMS"
+				
+				
+				if [ ! -f "/config/cache/${artist_id}-tidal-compilations_data.json" ]; then
+					if [ ! -d "/config/temp" ]; then
+						mkdir "/config/temp"
 						sleep 0.1
 					fi
-				done
+
+					offsetcount=$(( $compilations_total / 50 ))
+					for ((i=0;i<=$offsetcount;i++)); do
+						if [ ! -f "release-page-$i.json" ]; then
+							if [ $i != 0 ]; then
+								offset=$(( $i * 50 ))
+								dlnumber=$(( $offset + 50))
+							else
+								offset=0
+								dlnumber=$(( $offset + 50))
+							fi
+							log "$setlog $DL_TYPE :: FINDING ITEMS :: Downloading itemes page $i... ($offset - $dlnumber Results)"
+							curl -s "https://api.tidal.com/v1/artists/${artist_id}/albums?countryCode=$CountryCode&offset=$offset&limit=50&filter=COMPILATIONS" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/${artist_id}-releases-page-$i.json"
+							sleep 0.1
+						fi
+					done
 
 
-				ArtistCompilations=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
+					ArtistCompilations=$(jq -s '.' /config/temp/${artist_id}-releases-page-*.json)
 
 
-				if [ -d "/config/temp" ]; then
-					rm /config/temp/${artist_id}-releases-page-*.json
-					sleep 0.1
-					rm -rf "/config/temp"
+					if [ -d "/config/temp" ]; then
+						rm /config/temp/${artist_id}-releases-page-*.json
+						sleep 0.1
+						rm -rf "/config/temp"
+					fi
 				fi
+				compilations_ids=$(echo "$ArtistCompilations" | jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
+				compilations_data=$(echo "$ArtistCompilations" | jq -r ".[]")
+				
 			fi
-			compilations_ids=$(echo "$ArtistCompilations" | jq -r ".[].items | sort_by(.numberOfTracks) | sort_by(.explicit and .numberOfTracks) | reverse |.[].id")
-			compilations_data=$(echo "$ArtistCompilations" | jq -r ".[]")
-			
-		fi
-		#echo "compilations: $compilations_total"
-		compilations_ids=($(echo "$compilations_ids"))
-		if [ "$compilations_total" != "0" ]; then
-			for id in ${!compilations_ids[@]}; do
-				album_number=$(( $id + 1 ))
-				album_id="${compilations_ids[$id]}"
-				album_total="$compilations_total"
-				compilation=true
-				AlbumProcess $album_id
-				compilation=false
-			done
+			#echo "compilations: $compilations_total"
+			compilations_ids=($(echo "$compilations_ids"))
+			if [ "$compilations_total" != "0" ]; then
+				for id in ${!compilations_ids[@]}; do
+					album_number=$(( $id + 1 ))
+					album_id="${compilations_ids[$id]}"
+					album_total="$compilations_total"
+					compilation=true
+					AlbumProcess $album_id
+					compilation=false
+				done
+			fi
 		fi
 	fi
 	
-	
-	
+	if [ ! -d /config/logs/completed/artists ]; then
+		mkdir -p /config/logs/completed/artists
+	fi
+
+	log "$setlog Marking Artist Completed..."
+	touch /config/logs/completed/artists/${artist_id}
 
 }
 
