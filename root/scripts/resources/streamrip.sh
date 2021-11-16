@@ -81,6 +81,7 @@ ClientDownloadMusicVerification () {
 		if find $DownloadLocation/temp -type f -iname "*.m4a" -o -iname "*.flac" | read; then
 			log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOAD :: COMPLETE"
 		fi
+		DownloadStatus=true
 	else
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOAD :: FAILED"
 		log "$albumlog $track_id_number OF $track_ids_count :: Performing cleanup..."
@@ -91,6 +92,6 @@ ClientDownloadMusicVerification () {
 		if [ -d "$DownloadLocation/temp" ]; then
 			rm -rf "$DownloadLocation/temp"
 		fi
-		return
+		DownloadStatus=false
 	fi
 }
