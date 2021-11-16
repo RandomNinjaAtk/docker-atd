@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0110"
+	log "############# SCRIPT VERSION 1.0.0111"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -100,6 +100,38 @@ Configuration () {
 		log "$TITLESHORT: WARNING: Compilations not set, defaulting to: Disabled (Appears On)"
 		Compilations="false"
 	fi
+	
+	if [ ! -z "$WantedQuality" ]; then
+		if [ "$WantedQuality" = "MQA" ]; then
+			log "$TITLESHORT: WantedQuality: MQA (up to FLAC 24bit)"
+			DownloadClientQuality=3
+		elif [ "$WantedQuality" = "FLAC" ]; then
+			log "$TITLESHORT: WantedQuality: FLAC 16bit"
+			DownloadClientQuality=2
+		elif [ "$WantedQuality" = "320" ]; then
+			log "$TITLESHORT: WantedQuality: 320 kbps"
+			DownloadClientQuality=1
+		elif [ "$WantedQuality" = "128" ]; then
+			log "$TITLESHORT: WantedQuality: 128 kbps"
+			DownloadClientQuality=0
+		fi
+	else
+		log "$TITLESHORT: WARNING: WantedQuality not set, defaulting to: FLAC"
+		DownloadClientQuality=2
+	fi
+	
+	
+	if [ ! -z "$RequireQuality" ]; then
+		if [ "$RequireQuality" = "false" ]; then
+			log "$TITLESHORT: RequireQuality: Disabled"
+		else
+			log "$TITLESHORT: RequireQuality: Enabled"
+		fi
+	else
+		log "$TITLESHORT: WARNING: RequireQuality not set, defaulting to: Disabled"
+		RequireQuality="false"
+	fi
+	
 	
 	if [ ! -z "$FolderPermissions" ]; then
 		log "$TITLESHORT: FolderPermissions: $FolderPermissions"
@@ -758,17 +790,47 @@ AlbumProcess () {
        		fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 		
-		ClientDownload "--max-quality 2 https://tidal.com/browse/track/$track_id"
+		ClientDownload "--max-quality $DownloadClientQuality https://tidal.com/browse/track/$track_id"
 		ClientDownloadMusicVerification
 		curl -s "$album_cover_url" -o "$DownloadLocation/temp/cover.jpg"
 		
+		
+				
 		#find $DownloadLocation/Album -type f -iname "*.m4a" -exec qtfaststart "{}" \; &>/dev/null
 		flacfile=""
 		m4afile=""
 		
 		flacfile="$(find $DownloadLocation/temp -type f -iname "*.flac")"
 		m4afile="$(find $DownloadLocation/temp -type f -iname "*.m4a")"
-
+		
+		if [ "$RequireQuality" = "true" ]; then
+			if [ "$WantedQuality" = "MQA" ] || [ "$WantedQuality" = "FLAC" ]; then
+				if [  -z "$flacfile" ]; then
+					log "$albumlog $track_id_number OF $track_ids_count :: ERROR :: File is not FLAC..."
+					log "$albumlog $track_id_number OF $track_ids_count :: ERROR :: Performing Cleanup..."
+					rm -rf "$DownloadLocation/temp"
+					if [ -d "$DownloadLocation/temp-complete" ]; then
+						rm -rf "$DownloadLocation/temp-complete"
+					fi
+					if [ ! -d "/config/logs/failed" ]; then
+						mkdir -p "/config/logs/failed"
+					fi
+					touch /config/logs/failed/$album_id
+				fi
+			elif [  -z "$m4afile" ]; then
+				log "$albumlog $track_id_number OF $track_ids_count :: ERROR :: File is not M4A..."
+				log "$albumlog $track_id_number OF $track_ids_count :: ERROR :: Performing Cleanup..."
+				rm -rf "$DownloadLocation/temp"
+				if [ -d "$DownloadLocation/temp-complete" ]; then
+					rm -rf "$DownloadLocation/temp-complete"
+				fi
+				if [ ! -d "/config/logs/failed" ]; then
+					mkdir -p "/config/logs/failed"
+				fi
+				touch /config/logs/failed/$album_id
+			
+			fi
+		fi
 		
 						
 		if [ "$track_explicit" = "true" ];then
@@ -906,13 +968,10 @@ AlbumProcess () {
 		
 	done
 	
-	if [ ! -z "$album_genre" ]; then
-		for file in "$DownloadLocation/temp-complete"/*.flac; do
-			metaflac "$file" --set-tag=GENRE="$album_genre"
-		done
+	if [ ! -d "$DownloadLocation/temp-complete" ]; then
+		log "$albumlog :: ERROR :: Album Failed, moving on..."
+		return
 	fi
-
-	AddReplaygainTags
 
 	download_count=$(find $DownloadLocation/temp-complete -type f -iname "*.m4a" -o -iname "*.flac" | wc -l)
 	albumlog="$setlog $DL_TYPE :: $album_number OF $album_total :: $album_title${album_version} ::"
@@ -931,6 +990,14 @@ AlbumProcess () {
 		fi
 		return
 	fi
+	
+	if [ ! -z "$album_genre" ]; then
+		for file in "$DownloadLocation/temp-complete"/*.flac; do
+			metaflac "$file" --set-tag=GENRE="$album_genre"
+		done
+	fi
+
+	AddReplaygainTags
 
 	if [ ! -d "$DownloadLocation/music" ]; then
 		mkdir -p "$DownloadLocation/music"
