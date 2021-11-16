@@ -63,6 +63,7 @@ ClientSelfTest () {
 		if [ -d $DownloadLocation/temp ]; then
 			rm -rf $DownloadLocation/temp
 		fi
+		ClientSelfTest=PASSED
 	else
 		if [ -d $DownloadLocation/temp ]; then
 			rm -rf $DownloadLocation/temp
