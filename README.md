@@ -44,6 +44,8 @@ Container images are configured using parameters passed at runtime (such as thos
 | `-e EnableReplayGain=true` | true = enabled :: Scans and analyzes files to add replaygain tags to song metadata |
 | `-e CountryCode=US` | Set to Tidal Region, same region as your account |
 | `-e Compilations=false` | false = disabled; true = enabled :: Enabling this downloads compilations the Artist Appears On... |
+| `-e WantedQuality=FLAC` | MQA or FLAC or 320 or 128 :: Maxium Quality :: MQA (24bit FLAC), FLAC (CD quality 16bit), 320 (320 kbps AAC), 128 (128 kbps AAC) |
+| `-e RequireQuality=false` | false = disabled; true = enabled :: Enabling requires the downloads to match the expected file type (.flac or .m4a)... |
 | `-e FolderPermissions=777` | Folder Permissions (chmod) |
 | `-e FilePermisssions=666` | File Permissions (chmod)  |
 
@@ -79,6 +81,8 @@ docker create \
   -e EnableReplayGain=true \
   -e CountryCode=US \
   -e Compilations=false \
+  -e WantedQuality=FLAC \
+  -e RequireQuality=false \
   -e FolderPermissions=777 \
   -e FilePermisssions=666 \
   --restart unless-stopped \
@@ -112,6 +116,8 @@ services:
       - EnableReplayGain=true
       - CountryCode=US
       - Compilations=false
+      - WantedQuality=FLAC
+      - RequireQuality=false
       - FolderPermissions=777
       - FilePermisssions=666
     restart: unless-stopped
