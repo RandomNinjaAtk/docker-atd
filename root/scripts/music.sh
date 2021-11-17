@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0114"
+	log "############# SCRIPT VERSION 1.0.0115"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -541,7 +541,7 @@ AlbumProcess () {
 		return
 	fi
 	
-	if [ -d "$DownloadLocation/music" ]; then
+	if [ -d "$DownloadLocation/music/$album_artist_folder" ]; then
 		if find "$DownloadLocation/music/$album_artist_folder" -type d -iname "$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ([[[:digit:]][[:digit:]]*[[:digit:]][[:digit:]])" | read; then
 			log "$albumlog Already downloaded, skipping..."
 			return
