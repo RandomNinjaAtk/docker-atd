@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0113"
+	log "############# SCRIPT VERSION 1.0.0114"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -240,7 +240,7 @@ ProcessArtist () {
 		log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Artist previously archived... :: SKIPPING"
 		return
 	fi
-	ClientSelfTest="TEST"
+	StartClientSelfTest="TEST"
 	artist_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
 	artist_biography="$(curl -s "https://api.tidal.com/v1/artists/${artist_id}?countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU'| jq -r ".text" | sed -e 's/\[[^][]*\]//g' | sed -e 's/<br\/>/\n/g')"
 	artist_picture_id="$(echo "$artist_data" | jq -r ".picture")"
@@ -724,7 +724,7 @@ AlbumProcess () {
        		fi
 		log "$albumlog $track_id_number OF $track_ids_count :: DOWNLOADING :: $track_id"
 
-		if [ "$ClientSelfTest" = "TEST" ]; then
+		if [ "$StartClientSelfTest" = "TEST" ]; then
 			ClientSelfTest
 		fi
 		
