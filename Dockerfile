@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.002"
+ENV VERSION="1.0.003"
 RUN \
 	echo "************ install dependencies ************" && \
 	echo "************ install and upgrade packages ************" && \
