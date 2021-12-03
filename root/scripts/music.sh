@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0115"
+	log "############# SCRIPT VERSION 1.0.0116"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -468,16 +468,6 @@ AlbumProcess () {
 		return
 	fi
 
-	if [ -d "$DownloadLocation/music" ]; then
-		if find "$DownloadLocation/music" -type d -iname "* ($album_id)" | read; then
-			log "$albumlog Already downloaded, skipping..."
-			if [ ! -d "/config/logs/completed/albums" ]; then
-				mkdir -p "/config/logs/completed/albums"
-			fi
-			touch	/config/logs/completed/albums/$album_id
-			return
-		fi
-	fi
 	
 	deezer_track_album_id=""
 	album_data=""
@@ -516,6 +506,15 @@ AlbumProcess () {
 	album_artist_folder="$album_artist_name_clean ($album_artist_id)"
 	album_folder_name="$album_artist_name_clean ($album_artist_id) - $album_type - $album_release_year - $album_title_clean${album_version_clean} ($album_id)"
 	albumlog="$albumlog $album_type :: $album_title${album_version} ::"
+	
+	if [ -d "$DownloadLocation/music/$album_artist_folder/$album_folder_name" ]; then
+		log "$albumlog Already downloaded, skipping..."
+		if [ ! -d "/config/logs/completed/albums" ]; then
+			mkdir -p "/config/logs/completed/albums"
+		fi
+		touch	/config/logs/completed/albums/$album_id
+		return
+	fi
 
 	if echo "$album_data" | grep -i "DOLBY_ATMOS" | read; then
 		log "$albumlog ERROR :: Album contains Dobly ATMOS tracks, skipping..."
@@ -529,16 +528,6 @@ AlbumProcess () {
 		else
 			log "$albumlog Various Artist Album Found :: Processing..."
 		fi
-	fi
-
-
-	if [ -d "$DownloadLocation/music/$album_artist_folder/$album_folder_name" ]; then
-		log "$albumlog Already downloaded, skipping..."
-		if [ ! -d "/config/logs/completed/albums" ]; then
-			mkdir -p "/config/logs/completed/albums"
-		fi
-		touch	/config/logs/completed/albums/$album_id
-		return
 	fi
 	
 	if [ -d "$DownloadLocation/music/$album_artist_folder" ]; then
