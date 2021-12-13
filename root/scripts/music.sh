@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0116"
+	log "############# SCRIPT VERSION 1.0.0117"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -103,8 +103,8 @@ Configuration () {
 	
 	if [ ! -z "$WantedQuality" ]; then
 		if [ "$WantedQuality" = "MQA" ]; then
-			log "$TITLESHORT: WantedQuality: MQA (up to FLAC 24bit)"
-			DownloadClientQuality=3
+			log "$TITLESHORT: WARNING: WantedQuality: MQA (up to FLAC 24bit) not supported, defaulting to: FLAC"
+			DownloadClientQuality=2
 		elif [ "$WantedQuality" = "FLAC" ]; then
 			log "$TITLESHORT: WantedQuality: FLAC 16bit"
 			DownloadClientQuality=2
