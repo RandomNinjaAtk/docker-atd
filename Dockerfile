@@ -3,7 +3,8 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.004"
+ENV VERSION="1.0.005"
+ENV SMA_PATH /usr/local/sma
 RUN \
 	echo "************ install dependencies ************" && \
 	echo "************ install and upgrade packages ************" && \
@@ -29,7 +30,21 @@ RUN \
 		mutagen \
 		r128gain \
 		qtfaststart \
-		streamrip
+		streamrip && \
+	echo "************ setup SMA ************" && \
+	echo "************ setup directory ************" && \
+	mkdir -p ${SMA_PATH} && \
+	echo "************ download repo ************" && \
+	git clone https://github.com/mdhiggins/sickbeard_mp4_automator.git ${SMA_PATH} && \
+	mkdir -p ${SMA_PATH}/config && \
+	echo "************ create logging file ************" && \
+	mkdir -p ${SMA_PATH}/config && \
+	touch ${SMA_PATH}/config/sma.log && \
+	chgrp users ${SMA_PATH}/config/sma.log && \
+	chmod g+w ${SMA_PATH}/config/sma.log && \
+	echo "************ install pip dependencies ************" && \
+	python3 -m pip install --user --upgrade pip && \	
+	pip3 install -r ${SMA_PATH}/setup/requirements.txt
 		
 # copy local files
 COPY root/ /
