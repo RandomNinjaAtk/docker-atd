@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.005"
+ENV VERSION="1.0.006"
 ENV SMA_PATH /usr/local/sma
 RUN \
 	echo "************ install dependencies ************" && \
@@ -19,6 +19,8 @@ RUN \
 		ffmpeg \
 		opus-tools \
 		tidy \
+		git \
+		wget \
 		python3-pip && \
 	rm -rf \
 		/tmp/* \
