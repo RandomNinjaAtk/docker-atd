@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.10"
+	log "############# SCRIPT VERSION 1.0.11"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -457,7 +457,7 @@ LidarrConnection () {
 						"$DownloadLocation/temp/thumb.jpg" &> /dev/null
 				fi
 
-				if python3 /usr/local/sma/manual.py --config "/local_configs/sma.ini" -i "$file" -nt; then
+				if python3 /usr/local/sma/manual.py --config "/local_configs/sma.ini" -i "$file" -nt &>/dev/null; then
 					sleep 0.01
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Processed $file with SMA..."
 					rm cat /usr/local/sma/config/*log*
@@ -480,7 +480,7 @@ LidarrConnection () {
 
 				mv "$filenoext.mkv" "$DownloadLocation/temp/temp.mkv"
 				cp "$DownloadLocation/temp/thumb.jpg" "$DownloadLocation/temp/cover.jpg"
-				log "========================START TAGGING========================"
+				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Tagging file"
 				ffmpeg -y \
 					-i "$DownloadLocation/temp/temp.mkv" \
 					-c copy \
@@ -495,8 +495,8 @@ LidarrConnection () {
 					-metadata ALBUMARTIST="$main_artists_names" \
 					-metadata ENCODED_BY="ATD" \
 					-attach "$DownloadLocation/temp/cover.jpg" -metadata:s:t mimetype=image/jpeg \
-					"$filenoext.mkv"
-				log "========================STOP FFMPEG========================="
+					"$filenoext.mkv" &>/dev/null
+				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Tagging complete!"
 								
 				if [ ! -d "$destination/video" ]; then
 					mkdir -p "$destination/video"
@@ -504,9 +504,9 @@ LidarrConnection () {
 					chown abc:abc "$destination/video"
 				fi
 				
-                mv "$filenoext.mkv" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
+                		mv "$filenoext.mkv" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
 				cp "$DownloadLocation/temp/cover.jpg" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
-                log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
+				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
 				if [ "$USEFOLDERS" == "true" ]; then
 					nfo="/$destination/artist.nfo"
