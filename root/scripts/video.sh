@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.11"
+	log "############# SCRIPT VERSION 1.0.12"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -223,7 +223,7 @@ LidarrConnection () {
 		artistname="$(echo "${artistdata}" | jq -r " .artistName")"
         artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
 		sanitizedartistname="$(basename "${artistnamepath}" | sed 's% (.*)$%%g')"
-        totaldownloadcount=$(find "$DownloadLocation" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mp4" | wc -l)
+        totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "$sanitizedartistname -*.mkv" | wc -l)
         if [ -f "/config/logs/$sanitizedartistname-$mbid-complete" ]; then
             if ! [[ $(find "/config/logs/$sanitizedartistname-$mbid-complete" -mtime +7 -print) ]]; then
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Already downloaded all ($totaldownloadcount) videos, skipping until expires..."
