@@ -391,9 +391,9 @@ LidarrConnection () {
 			OUT=""
 			
 			if [ "$USEFOLDERS" == "true" ]; then
-				destination="$DownloadLocation/$clean_main_artists_name ($main_artist_id)"
+				destination="$DownloadLocation/video/$clean_main_artists_name ($main_artist_id)"
 			else
-				destination="$DownloadLocation"
+				destination="$DownloadLocation/video"
 			fi
             if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mp4" ] || [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv" ]; then
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Already Downloaded, skipping..."
@@ -460,7 +460,7 @@ LidarrConnection () {
 				if python3 /usr/local/sma/manual.py --config "/local_configs/sma.ini" -i "$file" -nt &>/dev/null; then
 					sleep 0.01
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Processed $file with SMA..."
-					rm cat /usr/local/sma/config/*log*
+					rm  /usr/local/sma/config/*log*
 				else
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: ERROR: SMA Processing Error"
 					rm "$video" && log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: INFO: deleted: $filename"
