@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.12"
+	log "############# SCRIPT VERSION 1.0.13"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -498,14 +498,14 @@ LidarrConnection () {
 					"$filenoext.mkv" &>/dev/null
 				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Tagging complete!"
 								
-				if [ ! -d "$destination/video" ]; then
-					mkdir -p "$destination/video"
-					chmod 777 "$destination/video"
-					chown abc:abc "$destination/video"
+				if [ ! -d "$destination" ]; then
+					mkdir -p "$destination"
+					chmod 777 "$destination"
+					chown abc:abc "$destination"
 				fi
 				
-                		mv "$filenoext.mkv" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
-				cp "$DownloadLocation/temp/cover.jpg" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
+                		mv "$filenoext.mkv" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
+				cp "$DownloadLocation/temp/cover.jpg" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
 				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
 				if [ "$USEFOLDERS" == "true" ]; then
@@ -581,8 +581,8 @@ LidarrConnection () {
 					fi
 				fi
 				
-				nfo="/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).nfo"
-				if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv" ]; then
+				nfo="/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).nfo"
+				if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv" ]; then
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: NFO WRITER :: Writing NFO for $clean_title${clean_version} ($videoid)"
 					if [ ! -f "$nfo" ]; then
 						echo "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" >> "$nfo"
@@ -644,7 +644,7 @@ LidarrConnection () {
 							echo "	</actor>" >> "$nfo"
 						done
 
-						if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
+						if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg" ]; then
 							echo "	<thumb>$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg</thumb>" >> "$nfo"
 						else
 							echo "	<thumb/>" >> "$nfo"
