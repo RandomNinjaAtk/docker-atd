@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.13"
+	log "############# SCRIPT VERSION 1.0.14"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -32,7 +32,13 @@ Configuration () {
 	else
 		log "$TITLESHORT Script AutoStart: DISABLED"
 	fi
-
+	
+	if [ ! -z "$CountryCode" ]; then
+		log "$TITLESHORT: CountryCode: $CountryCode"
+	else
+		log "$TITLESHORT: WARNING: CountryCode not set, defaulting to: US"
+		CountryCode="US"
+	fi
 
     # if [ ! -f /root/.tidal-dl.json ]; then
     #    log "TIDAL :: No default config found, importing default config \"tidal.json\""
@@ -256,8 +262,8 @@ LidarrConnection () {
         fi
         log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: Processing.."
         videoidlist=""
-		artist_id=$tidalartistid		
-		videos_data=$(curl -s "https://listen.tidal.com/v1/pages/data/d6bd1f7f-2f93-4136-87ba-aa35d01692ba?artistId=${artist_id}&offset=0&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+		artist_id=$tidalartistid				
+		videos_data=$(curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=${CountryCode}&offset=0&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 		items_total=$(echo "$videos_data" | jq -r ".totalNumberOfItems")
 		if [ $items_total -le 50 ]; then
 			video_ids=$(echo "$videos_data" | jq -r ".items[].id")
@@ -287,7 +293,7 @@ LidarrConnection () {
 							dlnumber=$(( $offset + 50))
 						fi
 						log "$artistnumber of $wantedtotal :: Tidal CACHE :: $LidArtistNameCap :: Downloading Releases page $i... ($offset - $dlnumber Results)"
-						curl -s "https://listen.tidal.com/v1/pages/data/d6bd1f7f-2f93-4136-87ba-aa35d01692ba?artistId=${artist_id}&offset=$offset&limit=50&locale=en_US&deviceType=BROWSER&countryCode=US" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/$mbid-releases-page-$i.json"
+						curl -s "https://api.tidal.com/v1/artists/${artist_id}/videos?countryCode=${CountryCode}&offset=$offset&limit=50" -H "x-tidal-token: CzET4vdadNUFQ5JU" -o "/config/temp/$mbid-releases-page-$i.json"
 						sleep 0.1
 					fi
 				done
@@ -415,7 +421,7 @@ LidarrConnection () {
 			VideoContributerCount=""
 			VideoContributerName=""
 			VideoContributerRole=""
-			VideoContributers=$(curl -s "https://listen.tidal.com/v1/videos/$videoid/contributors?limit=100&countryCode=US&locale=en_US&deviceType=BROWSER" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+			VideoContributers=$(curl -s "https://listen.tidal.com/v1/videos/$videoid/contributors?limit=100&countryCode=${CountryCode}" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 			VideoContributerCount=$(echo $VideoContributers | jq -r '.items[].name' | wc -l)
 						
 			OLDIFS="$IFS"
@@ -459,7 +465,7 @@ LidarrConnection () {
 
 				if python3 /usr/local/sma/manual.py --config "/local_configs/sma.ini" -i "$file" -nt &>/dev/null; then
 					sleep 0.01
-					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Processed $file with SMA..."
+					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Processed with SMA..."
 					rm  /usr/local/sma/config/*log*
 				else
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: ERROR: SMA Processing Error"
@@ -504,7 +510,7 @@ LidarrConnection () {
 					chown abc:abc "$destination"
 				fi
 				
-                		mv "$filenoext.mkv" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
+                mv "$filenoext.mkv" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
 				cp "$DownloadLocation/temp/cover.jpg" "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
 				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
