@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.09"
+	log "############# SCRIPT VERSION 1.0.10"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -395,7 +395,7 @@ LidarrConnection () {
 			else
 				destination="$DownloadLocation"
 			fi
-            if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mp4" ]; then
+            if [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mp4" ] || [ -f "/$destination/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv" ]; then
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Already Downloaded, skipping..."
                 continue
             else
@@ -423,39 +423,30 @@ LidarrConnection () {
 			VideoDirectors=($(echo $VideoContributers | jq -r '.items[] | select(.role=="Video Director") | .name'))
 			VideoPublishers=($(echo $VideoContributers | jq -r '.items[] | select(.role=="Music Publisher") | .name'))
 			IFS="$OLDIFS"
-		    rip url "https://tidal.com/browse/video/$videoid"
-            find "$DownloadLocation" -type f -iname "*.mp4" -newer "temp" -print0 | while IFS= read -r -d '' video; do
+
+			if [ ! -d "$DownloadLocation/temp" ]; then
+				mkdir -p "$DownloadLocation/temp"
+				chmod 777 "$DownloadLocation/temp"
+				log "Creating temp folder"
+			else
+				rm -rf "$DownloadLocation/temp"
+				mkdir -p "$DownloadLocation/temp"
+				chmod 777 "$DownloadLocation/temp"
+				log "Clearing temp folder data"
+			fi
+			
+			if [ -d "$DownloadLocation/temp" ]; then
+		    	rip url "https://tidal.com/browse/video/$videoid"
+			fi
+            find "$DownloadLocation/temp" -type f -iname "*.mp4" -newer "temp" -print0 | while IFS= read -r -d '' video; do
                 count=$(($count+1))
                 file="${video}"
+				filenoext="${file%.*}"
                 filename="$(basename "$video")"
                 extension="${filename##*.}"
                 filenamenoext="${filename%.*}"
 				
-				audiochannels="$(ffprobe -v quiet -print_format json -show_streams "$file" | jq -r ".[] | .[] | select(.codec_type==\"audio\") | .channels" | head -n 1)"
-				width="$(ffprobe -v quiet -print_format json -show_streams "$file" | jq -r ".[] | .[] | select(.codec_type==\"video\") | .width" | head -n 1)"
-				height="$(ffprobe -v quiet -print_format json -show_streams "$file" | jq -r ".[] | .[] | select(.codec_type==\"video\") | .height" | head -n 1)"
-				if [[ "$width" -ge "3800" || "$height" -ge "2100" ]]; then
-					videoquality=3
-					qualitydescription="UHD"
-				elif [[ "$width" -ge "1900" || "$height" -ge "1060" ]]; then
-					videoquality=2
-					qualitydescription="FHD"
-				elif [[ "$width" -ge "1260" || "$height" -ge "700" ]]; then
-					videoquality=1
-					qualitydescription="HD"
-				else
-					videoquality=0
-					qualitydescription="SD"
-				fi
 
-				if [ "$audiochannels" -ge "3" ]; then
-					channelcount=$(( $audiochannels - 1 ))
-					audiodescription="${audiochannels}.1 Channel"
-				elif [ "$audiochannels" == "2" ]; then
-					audiodescription="Stereo"
-				elif [ "$audiochannels" == "1" ]; then
-					audiodescription="Mono"
-				fi
 
 				if [ "$thumb" != "null" ]; then
 					curl -s "$thumb" -o "$DownloadLocation/temp/thumb.jpg"
@@ -466,23 +457,15 @@ LidarrConnection () {
 						"$DownloadLocation/temp/thumb.jpg" &> /dev/null
 				fi
 
-				mv "$file" "$DownloadLocation/temp/temp.mp4"
-				cp "$DownloadLocation/temp/thumb.jpg" "$DownloadLocation/temp/cover.jpg"
-				log "========================START FFMPEG========================"
-				ffmpeg -y \
-					-i "$DownloadLocation/temp/temp.mp4" \
-					-map 0:v \
-					-map 0:a \
-					-c copy \
-					-metadata ENCODED_BY="AMVD" \
-					-metadata:s:v:0 title="$qualitydescription" \
-					-metadata:s:a:0 title="$audiodescription" \
-					-movflags faststart \
-					"$file"
-				log "========================STOP FFMPEG========================="
-				log "========================START TAGGING========================"
-				
-								
+				if python3 /usr/local/sma/manual.py --config "/local_configs/sma.ini" -i "$file" -nt; then
+					sleep 0.01
+					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Processed $file with SMA..."
+					rm cat /usr/local/sma/config/*log*
+				else
+					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: ERROR: SMA Processing Error"
+					rm "$video" && log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: INFO: deleted: $filename"
+				fi
+			
 				OLDIFS="$IFS"
 				IFS=$'\n'
 				artistgenres=($(echo "$mbzartistinfo" | jq -r ".genres[].name"))
@@ -494,28 +477,34 @@ LidarrConnection () {
 				genre="${OUT%???}"
 				genre="${genre,,}"
 				genre="$(echo "$genre" | sed -E 's/(\w)(\w*)/\U\1\L\2/g')"
-				
-				python3 $SCRIPT_DIR/tag_video.py \
-					--file "$file" \
-					--songtitle "$title${version}" \
-					--songalbum "$album_title" \
-					--songartist "$artist_names" \
-					--songartistalbum "$main_artists_names" \
-					--songtracknumber "$track_number" \
-					--songlyricrating "$songlyricrating" \
-					--songgenre "$genre" \
-					--songdate "$release_year" \
-					--quality "$videoquality" \
-					--songartwork "$DownloadLocation/temp/cover.jpg"
-				rm "$DownloadLocation/temp/temp.mp4"
-				
+
+				mv "$filenoext.mkv" "$DownloadLocation/temp/temp.mkv"
+				cp "$DownloadLocation/temp/thumb.jpg" "$DownloadLocation/temp/cover.jpg"
+				log "========================START TAGGING========================"
+				ffmpeg -y \
+					-i "$DownloadLocation/temp/temp.mkv" \
+					-c copy \
+					-metadata TITLE="$title${version}" \
+					-metadata DATE_RELEASE="$release_date" \
+					-metadata DATE="$release_date" \
+					-metadata YEAR="$release_year" \
+					-metadata GENRE="$genre" \
+					-metadata TRACK_NUMBER="$track_number" \
+					-metadata ALBUM="$album_title" \
+					-metadata ARTIST="$artist_names" \
+					-metadata ALBUMARTIST="$main_artists_names" \
+					-metadata ENCODED_BY="ATD" \
+					-attach "$DownloadLocation/temp/cover.jpg" -metadata:s:t mimetype=image/jpeg \
+					"$filenoext.mkv"
+				log "========================STOP FFMPEG========================="
+								
 				if [ ! -d "$destination/video" ]; then
 					mkdir -p "$destination/video"
 					chmod 777 "$destination/video"
 					chown abc:abc "$destination/video"
 				fi
 				
-                mv "$file" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
+                mv "$filenoext.mkv" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv"
 				cp "$DownloadLocation/temp/cover.jpg" "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).jpg"
                 log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: DOWNLOADED :: $clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension"
 				
@@ -593,7 +582,7 @@ LidarrConnection () {
 				fi
 				
 				nfo="/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).nfo"
-				if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).$extension" ]; then
+				if [ -f "/$destination/video/$clean_main_artists_name - $clean_title${clean_version} ($videoid).mkv" ]; then
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: NFO WRITER :: Writing NFO for $clean_title${clean_version} ($videoid)"
 					if [ ! -f "$nfo" ]; then
 						echo "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>" >> "$nfo"
@@ -673,10 +662,10 @@ LidarrConnection () {
             fi
         done
         touch "/config/logs/$sanitizedartistname-$mbid-complete"
-        totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "$clean_main_artists_name -*.mp4" | wc -l)
+        totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "$clean_main_artists_name -*.mkv" | wc -l)
         log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $totaldownloadcount VIDEOS DOWNLOADED"
 	done
-	totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "*.mp4" | wc -l)
+	totaldownloadcount=$(find "$DownloadLocation/video" -mindepth 1 -maxdepth 3 -type f -iname "*.mkv" | wc -l)
 	log "############# $totaldownloadcount VIDEOS DOWNLOADED"
 }
 
