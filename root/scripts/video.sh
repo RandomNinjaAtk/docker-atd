@@ -35,6 +35,7 @@ Configuration () {
 	
 	if [ ! -z "$CountryCode" ]; then
 		log "$TITLESHORT: CountryCode: $CountryCode"
+		CountryCode="${CountryCode^^}"
 	else
 		log "$TITLESHORT: WARNING: CountryCode not set, defaulting to: US"
 		CountryCode="US"
