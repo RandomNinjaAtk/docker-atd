@@ -19,7 +19,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Music"
-	log "############# SCRIPT VERSION 1.0.0117"
+	log "############# SCRIPT VERSION 1.0.0118"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -85,6 +85,7 @@ Configuration () {
 	
 	if [ ! -z "$CountryCode" ]; then
 		log "$TITLESHORT: CountryCode: $CountryCode"
+		CountryCode="${CountryCode^^}"
 	else
 		log "$TITLESHORT: WARNING: CountryCode not set, defaulting to: US"
 		CountryCode="US"
