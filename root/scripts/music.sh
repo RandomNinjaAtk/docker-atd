@@ -156,6 +156,7 @@ Configuration () {
 		exit 1
 	fi
 	sleep 5
+	amount=1000000000
 }
 
 log () {
@@ -176,7 +177,7 @@ LidarrConnection () {
 		mbid="${lidarrlist[$id]}"
 		artistdata=$(echo "${lidarrdata}" | jq -r ".[] | select(.foreignArtistId==\"${mbid}\")")
 		artistname="$(echo "${artistdata}" | jq -r ".artistName")"
-       	artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
+       		artistnamepath="$(echo "${artistdata}" | jq -r " .path")"
 		artistfolder="$(basename "${artistnamepath}")"
 		sanitizedartistname="$(basename "${artistnamepath}" | sed 's% (.*)$%%g')"
 		tidalurl=""
@@ -215,6 +216,80 @@ LidarrConnection () {
 		ProcessArtist
 	done
 }
+
+LidarrList () {
+	if [ -f "temp-lidarr-missing.json" ]; then
+		rm "/scripts/temp-lidarr-missing.json"
+	fi
+
+	if [ -f "/scripts/temp-lidarr-cutoff.json" ]; then
+		rm "/scripts/temp-lidarr-cutoff.json"
+	fi
+
+	if [ -f "/scripts/lidarr-monitored-list.json" ]; then
+		rm "/scripts/lidarr-monitored-list.json"
+	fi
+
+	if [[ "$LIST" == "missing" || "$LIST" == "both" ]]; then
+		log "Downloading missing list..."
+		wget "$LidarrUrl/api/v1/wanted/missing?page=1&pagesize=${amount}&includeArtist=true&sortDir=desc&sortKey=releaseDate&apikey=${LidarrApiKey}" -O "/scripts/temp-lidarr-missing.json"
+		missingtotal=$(cat "/scripts/temp-lidarr-missing.json" | jq -r '.records | .[] | .id' | wc -l)
+		log "FINDING MISSING ALBUMS: ${missingtotal} Found"
+	fi
+	if [[ "$LIST" == "cutoff" || "$LIST" == "both" ]]; then
+		log "Downloading cutoff list..."
+		wget "$LidarrUrl/api/v1/wanted/cutoff?page=1&pagesize=${amount}&includeArtist=true&sortDir=desc&sortKey=releaseDate&apikey=${LidarrApiKey}" -O "/scripts/temp-lidarr-cutoff.json"
+		cuttofftotal=$(cat "/scripts/temp-lidarr-cutoff.json" | jq -r '.records | .[] | .id' | wc -l)
+		log "FINDING CUTOFF ALBUMS: ${cuttofftotal} Found"
+	fi
+	jq -s '.[]' /scripts/temp-lidarr-*.json > "/scripts/lidarr-monitored-list.json"
+	missinglistalbumids=($(cat "/scripts/lidarr-monitored-list.json" | jq -r '.records | .[] | .id'))
+	missinglisttotal=$(cat "/scripts/lidarr-monitored-list.json" | jq -r '.records | .[] | .id' | wc -l)
+	if [ -f "/scripts/temp-lidarr-missing.json" ]; then
+		rm "/scripts/temp-lidarr-missing.json"
+	fi
+
+	if [ -f "/scripts/temp-lidarr-cutoff.json" ]; then
+		rm "/scripts/temp-lidarr-cutoff.json"
+	fi
+
+	if [ -f "/scripts/lidarr-monitored-list.json" ]; then
+		rm "/scripts/lidarr-monitored-list.json"
+	fi
+}
+
+
+WantedMode () {
+	echo "####### DOWNLOAD AUDIO (WANTED MODE)"
+	LidarrList
+
+	for id in ${!missinglistalbumids[@]}; do
+		currentprocess=$(( $id + 1 ))
+		lidarralbumid="${missinglistalbumids[$id]}"
+		albumdeezerurl=""
+		error=0
+		lidarralbumdata=$(curl -s --header "X-Api-Key:"${LidarrApiKey} --request GET  "$LidarrUrl/api/v1/album?albumIds=${lidarralbumid}")
+		OLDIFS="$IFS"
+		IFS=$'\n'
+		lidarralbumdrecordids=($(echo "${lidarralbumdata}" | jq -r '.[] | .releases | sort_by(.trackCount) | reverse | .[].foreignReleaseId'))
+		IFS="$OLDIFS"
+		albumreleasegroupmbzid=$(echo "${lidarralbumdata}"| jq -r '.[] | .foreignAlbumId')
+		releases=$(curl -s -A "$agent" "${MBRAINZMIRROR}/ws/2/release?release-group=$albumreleasegroupmbzid&inc=url-rels&fmt=json")
+		albumreleaseid=($(echo "${releases}"| jq -r '.releases[] | select(.relations[].url.resource | contains("deezer")) | .id'))
+		sleep $MBRATELIMIT
+		lidarralbumtype="$(echo "${lidarralbumdata}"| jq -r '.[] | .albumType')"
+		lidarralbumtypelower="$(echo ${lidarralbumtype,,})"
+		albumtitle="$(echo "${lidarralbumdata}"| jq -r '.[] | .title')"
+		albumreleasedate="$(echo "${lidarralbumdata}"| jq -r '.[] | .releaseDate')"
+		albumreleaseyear="${albumreleasedate:0:4}"
+		albumclean="$(echo "$albumtitle" | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g")"
+		albumartistmbzid=$(echo "${lidarralbumdata}"| jq -r '.[].artist.foreignArtistId')
+		albumartistname=$(echo "${lidarralbumdata}"| jq -r '.[].artist.artistName')
+		logheader="$currentprocess of $missinglisttotal :: $albumartistname :: $albumreleaseyear :: $lidarralbumtype :: $albumtitle"
+		filelogheader="$albumartistname :: $albumreleaseyear :: $lidarralbumtype :: $albumtitle"
+		
+}
+
 
 ProcessArtist () {		
       
@@ -1033,7 +1108,13 @@ AlbumProcess () {
 }
 
 Configuration
-LidarrConnection
+
+if [ "$DownloadMode" = "wanted" ]; then
+	LidarrList
+	WantedMode
+else
+	LidarrConnection
+fi
 
 log "############################################ SCRIPT COMPLETE"
 if [ "$AutoStart" == "true" ]; then
