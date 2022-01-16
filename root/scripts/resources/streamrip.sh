@@ -74,7 +74,10 @@ ClientSelfTest () {
 }
 
 ClientDownload() {
-    rip url $1 &>/dev/null
+	if [ ! -d "$DownloadLocation/temp" ]; then
+			mkdir -p "$DownloadLocation/temp"
+	fi
+    rip url $1
 }
 
 ClientDownloadMusicVerification () {
