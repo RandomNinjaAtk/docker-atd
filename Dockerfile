@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.006"
+ENV VERSION="1.0.007"
 ENV SMA_PATH /usr/local/sma
 RUN \
 	echo "************ install dependencies ************" && \
