@@ -121,7 +121,7 @@ embed = true
 # The size of the artwork to embed. Options: thumbnail, small, large, original.
 # "original" images can be up to 30MB, and may fail embedding. 
 # Using "large" is recommended.
-size = "original"
+size = "large"
 # Both of these options limit the size of the embedded artwork. If their values
 # are larger than the actual dimensions of the image, they will be ignored.
 # If either value is -1, the image is left untouched.
@@ -150,7 +150,7 @@ add_singles_to_folder = false
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
 # and "albumcomposer"
-track_format = "{tracknumber}. {artist} - {title}"
+track_format = "{tracknumber}. {artist} - {title}{explicit}"
 # Only allow printable ASCII characters in filenames.
 restrict_characters = false
 
@@ -169,4 +169,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.7"
+version = "1.9.2"
