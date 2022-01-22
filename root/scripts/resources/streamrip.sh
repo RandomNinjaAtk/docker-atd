@@ -1,12 +1,14 @@
+#!/usr/bin/with-contenv bash
+
 ClientConfigCheck () {
 	
 	#check existing config file
-	if [ -f /root/.config/streamrip/config.toml ]; then
-		if cat /root/.config/streamrip/config.toml | grep "/downloads-atd/temp" | read; then
+	if [ -f /config/streamrip_config.toml ]; then
+		if cat /config/streamrip_config.toml | grep "/downloads-atd/temp" | read; then
 			log "TIDAL :: Existing config file found with the correct download location"
 		else
 			log "TIDAL :: ERROR :: Existing config file found with the wrong location, removing to import new config"
-			rm -rf "/root/.config/streamrip"
+			rm -rf "/config/streamrip_config.toml"
 		fi
 	fi
 
@@ -26,7 +28,7 @@ ClientConfigCheck () {
 		fi
 	fi
 	
-	TokenCheck=$(cat /root/.config/streamrip/config.toml | grep token_expiry | wc -m)
+	TokenCheck=$(cat /config/streamrip_config.toml | grep token_expiry | wc -m)
 	if [ $TokenCheck == 18 ]; then
 		log "TIDAL :: ERROR :: Loading client for required authentication, please authenticate, then exit the client..."
 		rip config --tidal
@@ -36,6 +38,7 @@ ClientConfigCheck () {
 		if [[ $(find "/config/streamrip_config.toml" -mtime +6 -print) ]]; then
 			log "TIDAL :: ERROR :: Token expired, removing..."
 			rip config --tidal
+		fi
 	fi
 
 }
