@@ -62,7 +62,7 @@ ClientDownload() {
 	if [ ! -d "$DownloadLocation/temp" ]; then
 		mkdir -p "$DownloadLocation/temp"
 	fi
-    	rip url $1 -d "$DownloadLocation/temp" -c "/config/streamrip_config.toml"
+    	rip url $1 -d "$DownloadLocation/temp" --config "/config/streamrip_config.toml"
 }
 
 ClientDownloadMusicVerification () {
