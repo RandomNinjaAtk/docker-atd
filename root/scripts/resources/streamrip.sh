@@ -11,21 +11,17 @@ ClientConfigCheck () {
 	fi
 
 	# create streamrip config directory if missing
-	if [ ! -d "/root/.config/streamrip" ]; then
-		mkdir -p "/root/.config/streamrip"
-		# check for backup token and use it if exists
-		if [ ! -f /root/.config/streamrip/config.toml ]; then
-			if [ -f /config/backup/streamrip_config.toml ]; then
-				log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml\""
-				cp -p /config/backup/streamrip_config.toml /root/.config/streamrip/config.toml
-				# remove backup token
-				rm /config/backup/streamrip_config.toml 
-			else
-				log "TIDAL :: No default config found, importing default config from \"$SCRIPT_DIR/streamrip_config.toml\""
-				if [ -f "$SCRIPT_DIR/streamrip_config.toml" ]; then
-					cp "$SCRIPT_DIR/streamrip_config.toml" /root/.config/streamrip/config.toml
-					chmod 777 -R /root
-				fi
+	if [ ! -f /config/streamrip_config.toml ]; then
+		if [ -f /config/backup/streamrip_config.toml ]; then
+			log "TIDAL :: Importing backup config from \"/config/backup/streamrip_config.toml\""
+			cp -p /config/backup/streamrip_config.toml /config/streamrip_config.toml
+			# remove backup token
+			rm -rf /config/backup/
+		else
+			log "TIDAL :: No default config found, importing default config from \"/config/streamrip_config.toml\""
+			if [ -f "/config/streamrip_config.toml" ]; then
+				cp "$SCRIPT_DIR/streamrip_config.toml" /config/streamrip_config.toml
+				chmod 777 /config/streamrip_config.toml
 			fi
 		fi
 	fi
@@ -36,21 +32,10 @@ ClientConfigCheck () {
 		rip config --tidal
 	fi
 
-	if [ -f /root/.config/streamrip/config.toml ]; then
-		if [[ $(find "/root/.config/streamrip/config.toml" -mtime +6 -print) ]]; then
+	if [ -f /config/streamrip_config.toml ]; then
+		if [[ $(find "/config/streamrip_config.toml" -mtime +6 -print) ]]; then
 			log "TIDAL :: ERROR :: Token expired, removing..."
 			rip config --tidal
-		else
-			# create backup of token to allow for container updates
-			if [ ! -d /config/backup ]; then
-				mkdir -p /config/backup
-			else
-				rm -rf /config/backup
-				mkdir -p /config/backup
-			fi
-			log "TIDAL :: Backing up config from \"/root/.config/streamrip/config.toml\" to \"/config/backup/streamrip_config.toml\""
-			cp -p /root/.config/streamrip/config.toml /config/backup/streamrip_config.toml
-		fi
 	fi
 
 }
@@ -75,9 +60,9 @@ ClientSelfTest () {
 
 ClientDownload() {
 	if [ ! -d "$DownloadLocation/temp" ]; then
-			mkdir -p "$DownloadLocation/temp"
+		mkdir -p "$DownloadLocation/temp"
 	fi
-    rip url $1
+    	rip url $1 -d "$DownloadLocation/temp" -c "/config/streamrip_config.toml"
 }
 
 ClientDownloadMusicVerification () {
