@@ -9,11 +9,11 @@ source_subdirectories = false
 # Download (and convert) tracks all at once, instead of sequentially.
 # If you are converting the tracks, or have fast internet, this will
 # substantially improve processing speed.
-enabled = true
+enabled = false
 # The maximum number of tracks to download at once
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
-max_connections = 3
+max_connections = 1
 
 
 [qobuz]
