@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.011"
+ENV VERSION="1.0.012"
 ENV SMA_PATH /usr/local/sma
 RUN \
 	echo "************ install dependencies ************" && \
@@ -46,7 +46,10 @@ RUN \
 	chmod g+w ${SMA_PATH}/config/sma.log && \
 	echo "************ install pip dependencies ************" && \
 	python3 -m pip install --user --upgrade pip && \	
-	pip3 install -r ${SMA_PATH}/setup/requirements.txt
+	pip3 install -r ${SMA_PATH}/setup/requirements.txt && \
+	echo "************ install beets ************" && \
+	pip3 install https://github.com/beetbox/beets/tarball/master && \
+	pip3 install pyacoustid
 		
 # copy local files
 COPY root/ /
