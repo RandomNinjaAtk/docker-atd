@@ -35,8 +35,8 @@ match:
         track_length: 2.0 # 2.0
         track_id: 5.0 # 5.0
     preferred:
-        countries: ['US|XW'] # []
-        media: ['Digital Media','CD'] # []
+        countries: [] # []
+        media: ['Digital Media|CD'] # []
         original_year: yes # no
     ignored: ['missing_tracks', 'track_length', 'track_index'] # []
     required: [] # []
