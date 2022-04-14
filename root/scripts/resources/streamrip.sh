@@ -65,7 +65,8 @@ ClientDownload() {
 	if [ ! -d "$DownloadLocation/temp" ]; then
 		mkdir -p "$DownloadLocation/temp"
 	fi
-    	rip url $1 -d "$DownloadLocation/temp" --config "/config/streamrip_config.toml" --ignore-db
+	rip url $1 -d "$DownloadLocation/temp" --config "/config/streamrip_config.toml" --ignore-db
+	find /tmp -type f -iname "*.jpg" -delete
 }
 
 ClientDownloadMusicVerification () {
