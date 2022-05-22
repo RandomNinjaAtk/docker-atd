@@ -3,7 +3,7 @@ LABEL maintainer="RandomNinjaAtk"
 
 ENV TITLE="Automated Tidal Downloader (ATD)"
 ENV TITLESHORT="ATD"
-ENV VERSION="1.0.013"
+ENV VERSION="1.0.014"
 ENV SMA_PATH /usr/local/sma
 RUN \
 	echo "************ install dependencies ************" && \
@@ -31,6 +31,7 @@ RUN \
 		yq \
 		mutagen \
 		r128gain \
+		tidal-dl \
 		qtfaststart && \
 	pip3 install git+https://github.com/nathom/streamrip.git@dev && \
 	echo "************ setup SMA ************" && \
