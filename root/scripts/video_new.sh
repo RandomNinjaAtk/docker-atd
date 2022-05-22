@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.16"
+	log "############# SCRIPT VERSION 1.0.17"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -49,7 +49,7 @@ Configuration () {
     	fi
     	tidal-dl -o /tmp
     	tidal-dl -r P1080
-			tidal-dl -q HiFi
+		tidal-dl -q HiFi
     fi
 
 	# check for backup token and use it if exists
@@ -365,7 +365,7 @@ LidarrConnection () {
 				if [ $foundFileCount = 0 ]; then
 				 	extendedFileName=" (Alternate Version)"
 				else
-					foundFileCount=(( $foundFileCount + 1 ))
+					foundFileCount=$(( $foundFileCount + 1 ))
 					extendedFileName=" (Alternate Version $foundFileCount)"
 				fi
 			fi
