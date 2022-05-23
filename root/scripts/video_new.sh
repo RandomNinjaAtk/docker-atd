@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.18"
+	log "############# SCRIPT VERSION 1.0.19"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -269,8 +269,7 @@ LidarrConnection () {
 					rm -rf "/config/temp"
 				fi
 			fi
-			video_ids=$(cat "/config/cache/$sanitizedartistname-$mbid-tidal-videos.json" | jq -r ".[].items[].id")
-			videos_data=$(cat "/config/cache/$sanitizedartistname-$mbid-tidal-videos.json" | jq -r ".[]")
+			video_ids=$(cat "/config/cache/$sanitizedartistname-$mbid-tidal-videos.json" | jq -r ".[].items[].id" | sort -u)
 		fi
 
         videoids=($(echo "$video_ids"))
@@ -285,8 +284,13 @@ LidarrConnection () {
         for id in ${!videoids[@]}; do
             currentprocess=$(( $id + 1 ))
             videoid="${videoids[$id]}"
-			
-			video_data=$(echo "$videos_data" | jq -r ".items[] | select(.id==$videoid)")
+			if [ -d "$DownloadLocation/video/$artistfolder" ]; then
+				if find "$DownloadLocation/video/$artistfolder" -type f -iname "tidal_video_id_${videoid}_" | read; then
+					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Already Downloaded, skipping..."
+					continue
+				fi
+			fi
+			video_data=$(curl -s "https://api.tidal.com/v1/videos/$videoid?countryCode=${CountryCode}" -H 'x-tidal-token: CzET4vdadNUFQ5JU' | jq -r)
 			title=$(echo "$video_data" | jq -r ".title")
 			clean_title="$(echo "$title" | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
 			version=$(echo "$video_data" | jq -r ".version")
@@ -301,9 +305,60 @@ LidarrConnection () {
 			artists_id=$(echo "$video_data" | jq -r ".artist.id")
 			artists_ids=($(echo "$video_data" | jq -r ".artists[].id"))
 			thumb="https://resources.tidal.com/images/$image_id_fix/750x500.jpg"
-			
 			if [ $tidalartistid != $artists_id ]; then
 				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Artist ID does not match wanted artist, skipping..."
+				
+				count="0"
+					query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://listen.tidal.com/artist/${artists_id}%22&fmt=json")
+						count=$(echo "$query_data" | jq -r ".count")
+						if [ "$count" == "0" ]; then
+							sleep 1.5
+							query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/artist/${artists_id}%22&fmt=json")
+							count=$(echo "$query_data" | jq -r ".count")
+							sleep 1.5
+						fi
+						
+						if [ "$count" == "0" ]; then
+							query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22http://tidal.com/browse/artist/${artists_id}%22&fmt=json")
+							count=$(echo "$query_data" | jq -r ".count")
+							sleep 1.5
+						fi
+						
+						if [ "$count" == "0" ]; then
+							query_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/url?query=url:%22https://tidal.com/browse/artist/${artists_id}%22&fmt=json")
+							count=$(echo "$query_data" | jq -r ".count")
+						fi
+						
+						if [ "$count" != "0" ]; then
+							musicbrainz_main_artist_id=$(echo "$query_data" | jq -r '.urls[]."relation-list"[].relations[].artist.id' | head -n 1)
+							sleep 1.5
+							artist_data=$(curl -s -A "$agent" "https://musicbrainz.org/ws/2/artist/$musicbrainz_main_artist_id?fmt=json")
+							artist_sort_name="$(echo "$artist_data" | jq -r '."sort-name"')"
+							artist_formed="$(echo "$artist_data" | jq -r '."begin-area".name')"
+							artist_born="$(echo "$artist_data" | jq -r '."life-span".begin')"
+							gender="$(echo "$artist_data" | jq -r ".gender")"
+							matched_id=true
+							data=$(curl -s "$LidarrUrl/api/v1/search?term=lidarr%3A$musicbrainz_main_artist_id" -H "X-Api-Key: $LidarrApiKey" | jq -r ".[]")
+							artistName="$(echo "$data" | jq -r ".artist.artistName")"
+							foreignId="$(echo "$data" | jq -r ".foreignId")"
+							data=$(curl -s "$LidarrUrl/api/v1/rootFolder" -H "X-Api-Key: $LidarrApiKey" | jq -r ".[]")
+							path="$(echo "$data" | jq -r ".path")"
+							qualityProfileId="$(echo "$data" | jq -r ".defaultQualityProfileId")"
+							metadataProfileId="$(echo "$data" | jq -r ".defaultMetadataProfileId")"
+							data="{
+								\"artistName\": \"$artistName\",
+								\"foreignArtistId\": \"$foreignId\",
+								\"qualityProfileId\": $qualityProfileId,
+								\"metadataProfileId\": $metadataProfileId,
+								\"rootFolderPath\": \"$path\"
+								}"
+							log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Adding Artist to Lidarr ($musicbrainz_main_artist_id)..."
+							curl -s "$LidarrUrl/api/v1/artist" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $LidarrApiKey" --data-raw "$data"
+						else
+							matched_id=false
+						fi
+				
+				
 				continue
 			fi
 
@@ -391,10 +446,9 @@ LidarrConnection () {
 				elif find "$DownloadLocation/video/$artistfolder" -type f -iname "tidal_video_id_${videoid}_" | read; then
 					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Already Downloaded, skipping..."
 					continue
-				else
-					log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Sending to Download Client..."
 				fi
 			fi
+			log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Sending to Download Client..."
             touch temp
             if [ -d "/tmp/atd" ]; then
                 rm -rf "/tmp/atd"
@@ -439,8 +493,6 @@ LidarrConnection () {
                 filename="$(basename "$video")"
                 extension="${filename##*.}"
                 filenamenoext="${filename%.*}"
-				
-
 
 				if [ "$thumb" != "null" ]; then
 					curl -s "$thumb" -o "/tmp/atd/thumb.jpg"
