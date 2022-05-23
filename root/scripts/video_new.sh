@@ -15,7 +15,7 @@ Configuration () {
 	log ""
 	sleep 2
 	log "############# $TITLE - Video"
-	log "############# SCRIPT VERSION 1.0.17"
+	log "############# SCRIPT VERSION 1.0.18"
 	log "############# DOCKER VERSION $VERSION"
 	log "############# CONFIGURATION VERIFICATION"
 	error=0
@@ -298,8 +298,15 @@ LidarrConnection () {
 			image_id=$(echo "$video_data" | jq -r ".imageId")
 			image_id_fix=$(echo "$image_id" | sed "s/-/\//g")
 			album_title=$(echo "$video_data" | jq -r ".album.title")
+			artists_id=$(echo "$video_data" | jq -r ".artist.id")
 			artists_ids=($(echo "$video_data" | jq -r ".artists[].id"))
-			thumb=https://resources.tidal.com/images/$image_id_fix/750x500.jpg
+			thumb="https://resources.tidal.com/images/$image_id_fix/750x500.jpg"
+			
+			if [ $tidalartistid != $artists_id ]; then
+				log "$artistnumber of $artisttotal :: $artistname :: TIDAL :: $currentprocess of $videoidscount :: VideoID ($videoid) :: Artist ID does not match wanted artist, skipping..."
+				continue
+			fi
+
 			if [ "$explicit" = "false" ]; then
 				songlyricrating="0"
 			else
