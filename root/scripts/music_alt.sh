@@ -189,6 +189,10 @@ ProcessLidarrArtistList () {
         lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
 		lidarrArtistFolder="$(basename "${lidarrArtistPath}")"
 		lidarrArtistNameSanitized="$(basename "${lidarrArtistPath}" | sed 's% (.*)$%%g')"
+		OLDIFS="$IFS"
+		IFS=$'\n'
+		lidarrArtistGenres=($(echo "${lidarrArtistData}" | jq -r " .genres | .[]"))
+		IFS="$OLDIFS"
 		position="$artistNumber of $lidarrArtistTotal :: $lidarrArtistName"
 		log "$position :: Start"
 		GetTidalUrl
@@ -196,7 +200,6 @@ ProcessLidarrArtistList () {
 		GetTidalArtistAlbums
 		functionName=ProcessLidarrArtistList
 		log "$position :: End"
-		exit
 	done
 	log "End"
 }
@@ -264,7 +267,7 @@ GetTidalArtistAlbums () {
 	tidalArtistAlbumsNumberOfItemsCompilation=$(echo "$tidalArtistAlbumsDataCompilation" | jq -r ".totalNumberOfItems")
 	log "$position :: $tidalArtistAlbumsNumberOfItemsCompilation of $tidalArtistAlbumsIdsCountCompilation :: Compilations Found"
 	compilation=true
-	ProcessTidalIdList "$tidalArtistAlbumsIdsCompilation"
+	#ProcessTidalIdList "$tidalArtistAlbumsIdsCompilation"
 	functionName=GetTidalArtistAlbums
 	log "$position :: End"
 }
@@ -282,7 +285,6 @@ ProcessTidalIdList () {
 		tidalAlbumTitle=$(echo $tidalAlbumData | jq -r '.title')
 		tidalAlbumTitleSanitized=$(echo $tidalAlbumTitle | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
 		tidalAlbumReleaseDate=$(echo $tidalAlbumData | jq -r '.releaseDate')
-
 		if [ "$tidalAlbumReleaseDate" = "null" ]; then
 			tidalAlbumReleaseDate=$(echo $tidalAlbumData | jq -r '.streamStartDate')
 		fi
@@ -297,6 +299,11 @@ ProcessTidalIdList () {
 		if [ $tidalAlbumArtistId -ne $tidalArtistId ]; then
 			log "$position :: $idNumber of $idListCount :: $tidalId :: $tidalAlbumArtistId -ne $tidalId :: skipping..."
 			continue
+		fi
+		tidalAlbumAudioModes=$(echo $tidalAlbumData | jq -r '.audioModes')
+		if echo "$tidalAlbumAudioModes" | grep "DOLBY_ATMOS" | read; then
+			log "$position :: $idNumber of $idListCount :: $tidalId :: $tidalAlbumFoldername :: DOLBY ATMOS :: skipping..."
+			#continue
 		fi
 		tidalAlbumArtistSanitized=$(echo $tidalAlbumArtist | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
 		tidalAlbumFoldername="$tidalAlbumArtistSanitized - $tidalAlbumTitleSanitized ($tidalAlbumReleaseYear)-WEB-$tidalAlbumType-atd"
@@ -328,16 +335,12 @@ ProcessTidalIdList () {
 				track_deezer_data=$(curl -s "https://api.deezer.com/2.0/track/isrc:$tidalTrackIsrc")
 				if echo $track_deezer_data | grep "error" | read; then
 					deezerAlbumGenre=""
-					echo "ERROR GENERE NOT FOUND"
 				else
 					deezer_album_id=$(echo $track_deezer_data | jq -r .album.id)
 					deezer_album_data=$(curl -s "https://api.deezer.com/2.0/album/$deezer_album_id")
 					album_deezer_genre="$(echo $deezer_album_data | jq -r ".genres.data[].name" | head -n 1)"
 					deezerAlbumGenre="${album_deezer_genre,,}"
-					echo "GENERE FOUND :: $deezerAlbumGenre"
 				fi
-			else 
-				echo "GENERE FOUND :: $deezerAlbumGenre"
 			fi
 
 			tidalTrackArtistsIds=($(echo "$tidalTrackData" | jq -r ".artists[].id"))
@@ -354,6 +357,7 @@ ProcessTidalIdList () {
 			find /tmp -type f -iname "$tidalTrackNumber.lrc" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.lrc" \;
 
 			file="/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.flac"
+			flac -t "$file" && echo "command was successful" || echo "failed"
 			metaflac "$file" --remove-all-tags 	
 			metaflac "$file" --set-tag=TITLE="$tidalTrackTitle"
 			metaflac "$file" --set-tag=ALBUM="$tidalAlbumTitle"
@@ -420,8 +424,16 @@ ProcessTidalIdList () {
 			chown abc:abc "$lidarrArtistPath"
 		fi
 		if [ ! -z "$deezerAlbumGenre" ]; then
+			log "$position :: $idNumber of $idListCount :: $tidalId :: Tagging Tracks with Deezer Genre"
 			for file in "/tmp/import/$tidalAlbumFoldername"/*.flac; do
-				metaflac "$file" --set-tag=GENRE="$deezerAlbumGenre"
+				metaflac "$file" --set-tag=GENRE="${deezerAlbumGenre,,}"
+			done
+		else
+			for genre in ${!lidarrArtistGenres[@]}; do
+				log "$position :: $idNumber of $idListCount :: $tidalId :: Tagging Tracks with Artist Genres"
+				artistgenre="${lidarrArtistGenres[$genre]}"
+				artistgenre="$(echo "$artistgenre" | sed -E 's/(\w)(\w*)/\U\1\L\2/g')"
+				metaflac "$file" --set-tag=GENRE="${artistgenre,,}"
 			done
 		fi
 		mv "/tmp/import/$tidalAlbumFoldername" "$lidarrArtistPath"
