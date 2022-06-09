@@ -281,7 +281,12 @@ ProcessTidalIdList () {
 		idNumber=$(( $id + 1 ))
 		tidalId="${idList[$id]}"
 		log "$position :: $idNumber of $idListCount :: $tidalId :: Start"
-		tidalAlbumData=$(curl -s "https://api.tidal.com/v1/albums/$tidalId/?countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+		if [ -f "/config/logs/downloaded/$tidalId" ]; then
+			log "$position :: $idNumber of $idListCount :: $tidalId :: Previously Downloaded :: skipping..."
+			continue
+		fi
+
+		tidalAlbumData=$(curl -s "https://api.tidal.com/v1/albums/$tidalId?countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 		tidalAlbumTitle=$(echo $tidalAlbumData | jq -r '.title')
 		tidalAlbumTitleSanitized=$(echo $tidalAlbumTitle | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
 		tidalAlbumReleaseDate=$(echo $tidalAlbumData | jq -r '.releaseDate')
@@ -292,6 +297,7 @@ ProcessTidalIdList () {
 		tidalAlbumType=$(echo $tidalAlbumData | jq -r '.type')
 		tidalAlbumNumberOfTracks=$(echo $tidalAlbumData | jq -r '.numberOfTracks')
 		tidalAlbumNumberOfVolumes=$(echo $tidalAlbumData | jq -r '.numberOfVolumes')
+		tidalAlbumNumberOfVideos=$(echo $tidalAlbumData | jq -r '.numberOfVideos')
 		tidalAlbumCopyright=$(echo $tidalAlbumData | jq -r '.copyright')
 		tidalAlbumUpc=$(echo $tidalAlbumData | jq -r '.upc')
 		tidalAlbumArtist=$(echo $tidalAlbumData | jq -r '.artist.name')
@@ -299,13 +305,19 @@ ProcessTidalIdList () {
 
 		if [ $tidalAlbumArtistId -ne $tidalArtistId ]; then
 			log "$position :: $idNumber of $idListCount :: $tidalId :: $tidalAlbumArtistId -ne $tidalId :: skipping..."
-			continue
+			#continue
 		fi
 		tidalAlbumAudioModes=$(echo $tidalAlbumData | jq -r '.audioModes')
 		if echo "$tidalAlbumAudioModes" | grep "DOLBY_ATMOS" | read; then
 			log "$position :: $idNumber of $idListCount :: $tidalId :: $tidalAlbumFoldername :: DOLBY ATMOS :: skipping..."
 			continue
 		fi
+
+		if [ $tidalAlbumNumberOfTracks = 0 ]; then
+			log "$position :: $idNumber of $idListCount :: $tidalId :: $tidalAlbumNumberOfTracks = 0 :: No tracks found, skipping..."
+			continue
+		fi
+
 		tidalAlbumArtistSanitized=$(echo $tidalAlbumArtist | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
 		tidalAlbumFoldername="$tidalAlbumArtistSanitized - $tidalAlbumTitleSanitized ($tidalAlbumReleaseYear)-WEB-$tidalAlbumType-atd"
 		if [ -d "$lidarrArtistPath/$tidalAlbumFoldername" ]; then
@@ -333,10 +345,18 @@ ProcessTidalIdList () {
 			log "$position :: $idNumber of $idListCount :: $tidalId :: $idTrackNumber of $tidalAlbumTracksCount :: $tidalTrackId"
 			tidalTrackData=$(echo $tidalAlbumTracks | jq -r ".items[].item | select(.id==$tidalTrackId)")
 			tidalTrackCredits=$(curl -s "https://api.tidal.com/v1/tracks/$tidalTrackId/contributors?limit=1000&countryCode=$CountryCode" -H 'x-tidal-token: CzET4vdadNUFQ5JU')
-			tidalTrackTitle=$(echo $tidalTrackData | jq -r ".title")
-			tidalTrackTitleSanitized=$(echo $tidalTrackTitle | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
+			tidalTrackTitle="$(echo $tidalTrackData | jq -r ".title")"
+			tidalTrackTitleSanitized="$(echo $tidalTrackTitle | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
 			tidalTrackNumber=$(echo $tidalTrackData | jq -r ".trackNumber")
 			tidalTrackCopyright=$(echo "$tidalTrackData" | jq -r ".copyright")
+			tidalTrackVersion="$(echo "$tidalTrackData" | jq -r ".version")"
+			if [ "$tidalTrackVersion" = "null" ]; then
+				tidalTrackVersion=""
+				tidalTrackVersionSanitized=""
+			else
+				tidalTrackVersion=" ($tidalTrackVersion)"
+				tidalTrackVersionSanitized=" $(echo $tidalTrackVersion | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
+			fi
 			tidalTrackIsrc=$(echo "$tidalTrackData" | jq -r ".isrc")
 			tidalTrackExplicit="$(echo "$tidalTrackData" | jq -r ".explicit")"
 
@@ -364,11 +384,11 @@ ProcessTidalIdList () {
 			fi
 
 			DownloadTidalId "https://tidal.com/browse/track/$tidalTrackId"
-			find /tmp -type f -iname "$tidalTrackNumber.flac" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.flac" \;
-			find /tmp -type f -iname "$tidalTrackNumber.m4a" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.m4a" \;
-			find /tmp -type f -iname "$tidalTrackNumber.lrc" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.lrc" \;
+			find /tmp -type f -iname "$tidalTrackNumber.flac" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - ${tidalTrackTitleSanitized}${tidalTrackVersionSanitized}.flac" \;
+			find /tmp -type f -iname "$tidalTrackNumber.m4a" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - ${tidalTrackTitleSanitized}${tidalTrackVersionSanitized}.m4a" \;
+			find /tmp -type f -iname "$tidalTrackNumber.lrc" -exec mv {} "/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - ${tidalTrackTitleSanitized}${tidalTrackVersionSanitized}.lrc" \;
 
-			file="/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - $tidalTrackTitleSanitized.flac"
+			file="/tmp/atd/${tidalTrackVolume}${tidalTrackNumber} - ${tidalTrackTitleSanitized}${tidalTrackVersionSanitized}.flac"
 			flac -t "$file" && filecheck="pass" || filecheck="failed"
 			if [ "$filecheck" = "pass" ]; then
 				echo "PASSED"
@@ -380,26 +400,23 @@ ProcessTidalIdList () {
 			fi
 			
 			metaflac "$file" --remove-all-tags 	
-			metaflac "$file" --set-tag=TITLE="$tidalTrackTitle"
+			metaflac "$file" --set-tag=TITLE="$tidalTrackTitle${tidalTrackVersion}"
 			metaflac "$file" --set-tag=ALBUM="$tidalAlbumTitle"
 			metaflac "$file" --set-tag=TRACKNUMBER="$tidalTrackNumber"
 			metaflac "$file" --set-tag=DISCNUMBER="$tidalTrackVolume"
 			metaflac "$file" --set-tag=TOTALTRACKS="$tidalAlbumNumberOfTracks"
 			metaflac "$file" --set-tag=TOTALDISCS="$tidalAlbumNumberOfVolumes"
-			metaflac "$file" --set-tag=ARTIST="$lidarrArtistName"
-			metaflac "$file" --set-tag=ALBUMARTIST="$lidarrArtistName"
+			#metaflac "$file" --set-tag=ARTIST="$tidalAlbumArtist"
+			metaflac "$file" --set-tag=ALBUMARTIST="$tidalAlbumArtist"
 			#metaflac "$file" --set-tag=ALBUMARTISTS="$lidarrArtistName"
 			#metaflac "$file" --set-tag=ARTISTS="$lidarrArtistName"
-			#for id in ${!tidalTrackArtistsIds[@]}; do
-			#	tidalTrackArtistId="${tidalTrackArtistsIds[$id]}"
-			#	tidalTrackArtistData=$(echo "$tidalTrackData" | jq -r ".artists[] | select(.id==$tidalTrackArtistId)")
-			#	if [ $tidalTrackArtistId = $tidalArtistId ]; then
-			#		continue
-			#	fi
-			#	tidalTrackArtistName=$(echo "$tidalTrackArtistData" | jq -r ".name")
-			#	tidalTrackArtistType=$(echo "$tidalTrackArtistData" | jq -r ".type")
-			#	metaflac "$file" --set-tag=ARTISTS="$tidalTrackArtistName"
-			#done
+			for id in ${!tidalTrackArtistsIds[@]}; do
+				tidalTrackArtistId="${tidalTrackArtistsIds[$id]}"
+				tidalTrackArtistData=$(echo "$tidalTrackData" | jq -r ".artists[] | select(.id==$tidalTrackArtistId)")
+				tidalTrackArtistName=$(echo "$tidalTrackArtistData" | jq -r ".name")
+				tidalTrackArtistType=$(echo "$tidalTrackArtistData" | jq -r ".type")
+				metaflac "$file" --set-tag=ARTIST="$tidalTrackArtistName"
+			done
 			
 			metaflac "$file" --set-tag=MUSICBRAINZ_ALBUMARTISTID="$musicbrainzId"
 			#metaflac "$file" --set-tag=LABEL="$tidalAlbumCopyright"
@@ -574,11 +591,39 @@ ProcessWithBeets () {
 	matchedTagsAlbumArtist="$(echo $matchedTags | jq -r ".album_artist")"
 	matchedTagsAlbumYear="$(echo $matchedTags | jq -r ".YEAR")"
 	matchedTagsAlbumType="$(echo $matchedTags | jq -r ".RELEASETYPE")"
-	tidalAlbumTitleSanitized=$(echo $matchedTagsAlbumTitle | sed -e "s%[^[:alpha:][:digit:]._' ]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
-	tidalAlbumFoldername="${tidalAlbumArtistSanitized}-${tidalAlbumTitleSanitized} ($matchedTagsAlbumYear)-FLAC-ATD"
+	matchedLidarrAlbumData=$(curl -s "$LidarrUrl/api/v1/search?term=lidarr%3A$matchedTagsAlbumReleaseGroupId" -H "X-Api-Key: $LidarrApiKey" | jq -r ".[].album")
+	matchedLidarrAlbumArtistId="$(echo "$matchedLidarrAlbumData" | jq -r ".artist.foreignArtistId")"
+	matchedLidarrAlbumArtistName="$(echo "$matchedLidarrAlbumData" | jq -r ".artist.artistName")"
+	matchedLidarrAlbumArtistCleanName="$(echo "$matchedLidarrAlbumData" | jq -r ".artist.cleanName")"
+	if [ "${matchedLidarrAlbumArtistCleanName}" != "null" ]; then
+		log "$position :: $idNumber of $idListCount :: $tidalId :: $matchedLidarrAlbumArtistName ($matchedLidarrAlbumArtistId) found in Lidarr"
+	else
+		log "$position :: $idNumber of $idListCount :: $tidalId :: $matchedLidarrAlbumArtistName ($matchedLidarrAlbumArtistId) NOT found in Lidarr"
+		data=$(curl -s "$LidarrUrl/api/v1/search?term=lidarr%3A$matchedLidarrAlbumArtistId" -H "X-Api-Key: $LidarrApiKey" | jq -r ".[]")
+		artistName="$(echo "$data" | jq -r ".artist.artistName")"
+		foreignId="$(echo "$data" | jq -r ".foreignId")"
+		data=$(curl -s "$LidarrUrl/api/v1/rootFolder" -H "X-Api-Key: $LidarrApiKey" | jq -r ".[]")
+		path="$(echo "$data" | jq -r ".path")"
+		qualityProfileId="$(echo "$data" | jq -r ".defaultQualityProfileId")"
+		metadataProfileId="$(echo "$data" | jq -r ".defaultMetadataProfileId")"
+		data="{
+			\"artistName\": \"$artistName\",
+			\"foreignArtistId\": \"$foreignId\",
+			\"qualityProfileId\": $qualityProfileId,
+			\"metadataProfileId\": $metadataProfileId,
+			\"rootFolderPath\": \"$path\"
+			}"
+		log "$position :: $idNumber of $idListCount :: $tidalId :: Adding Missing Artist to Lidarr :: $matchedLidarrAlbumArtistName ($matchedLidarrAlbumArtistId)..."
+		lidarrAddArtist=$(curl -s "$LidarrUrl/api/v1/artist" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $LidarrApiKey" --data-raw "$data")
+		log "$position :: $idNumber of $idListCount :: $tidalId :: Allowing Lidarr Artist Update, pause for 2 min..."
+		sleep 2m
+	fi
+	matchedLidarrAlbumArtistCleanName="$(echo "$matchedLidarrAlbumArtistName" | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
+
+	tidalAlbumFoldername="${matchedLidarrAlbumArtistCleanName}-${tidalAlbumTitleSanitized} ($matchedTagsAlbumYear)-FLAC-ATD"
 	
 	log "$position :: $idNumber of $idListCount :: $tidalId :: $matchedTagsAlbumReleaseGroupId"
-
+	
 	if [ -f "/config/logs/beets/matched/$matchedTagsAlbumReleaseGroupId" ]; then
 		log "$position :: $idNumber of $idListCount :: $tidalId ::  ERROR :: Already Imported"
 		touch "/config/logs/beets/matched/$tidalId"
@@ -619,7 +664,7 @@ ProcessWithBeets () {
 		metaflac "$file" --set-tag=YEAR="$matchedTagsAlbumYear"
 		metaflac "$file" --set-tag=ALBUM="$matchedTagsAlbumTitle"
 		metaflac "$file" --set-tag=MUSICBRAINZ_TRACKID="$matchedTagsTrackId"
-		metaflac "$file" --set-tag=MUSICBRAINZ_WORKID="$matchedTagsTrackWorkId"
+		#metaflac "$file" --set-tag=MUSICBRAINZ_WORKID="$matchedTagsTrackWorkId"
 		metaflac "$file" --set-tag=MUSICBRAINZ_RELEASETRACKID="$matchedTagsTrackReleaseId"
 		metaflac "$file" --set-tag=MUSICBRAINZ_ARTISTID="$matchedTagsTrackArtistId"
 		metaflac "$file" --set-tag=EXPLICIT="$matchedTagsTrackExplicit"
@@ -628,8 +673,8 @@ ProcessWithBeets () {
 		metaflac "$file" --set-tag=DISCNUMBER="$matchedTagsTrackDisc"
 		metaflac "$file" --set-tag=TOTALTRACKS="$tidalAlbumNumberOfTracks"
 		metaflac "$file" --set-tag=TOTALDISCS="$tidalAlbumNumberOfVolumes"
-		metaflac "$file" --set-tag=ARTIST="$lidarrArtistName"
-		metaflac "$file" --set-tag=ALBUMARTIST="$lidarrArtistName"
+		metaflac "$file" --set-tag=ARTIST="$matchedTagsTrackArtist"
+		metaflac "$file" --set-tag=ALBUMARTIST="$matchedLidarrAlbumArtistName"
 		if [ "$matchedTagsTrackLyrics" != "null" ]; then
 			metaflac "$file" --set-tag=LYRICS="$matchedTagsTrackLyrics"
 		fi
