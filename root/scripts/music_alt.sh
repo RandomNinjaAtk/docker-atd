@@ -288,7 +288,7 @@ ProcessTidalIdList () {
 
 		tidalAlbumData=$(curl -s "https://api.tidal.com/v1/albums/$tidalId?countryCode=$CountryCode" -H "x-tidal-token: CzET4vdadNUFQ5JU")
 		tidalAlbumTitle=$(echo $tidalAlbumData | jq -r '.title')
-		tidalAlbumTitleSanitized=$(echo $tidalAlbumTitle | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
+		tidalAlbumTitleSanitized=$(echo $tidalAlbumTitle | sed -e "s%[^[:alpha:][:digit:]._' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')
 		tidalAlbumReleaseDate=$(echo $tidalAlbumData | jq -r '.releaseDate')
 		if [ "$tidalAlbumReleaseDate" = "null" ]; then
 			tidalAlbumReleaseDate=$(echo $tidalAlbumData | jq -r '.streamStartDate')
@@ -588,6 +588,7 @@ ProcessWithBeets () {
 	matchedTags=$(ffprobe -hide_banner -loglevel fatal -show_error -show_format -show_streams -show_programs -show_chapters -show_private_data -print_format json "$GetFile" | jq -r ".format.tags")
 	matchedTagsAlbumReleaseGroupId="$(echo $matchedTags | jq -r ".MUSICBRAINZ_RELEASEGROUPID")"
 	matchedTagsAlbumTitle="$(echo $matchedTags | jq -r ".ALBUM")"
+	matchedTagsAlbumTitleClean="$(echo "$matchedTagsAlbumTitle" | sed -e "s%[^[:alpha:][:digit:]._' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
 	matchedTagsAlbumArtist="$(echo $matchedTags | jq -r ".album_artist")"
 	matchedTagsAlbumYear="$(echo $matchedTags | jq -r ".YEAR")"
 	matchedTagsAlbumType="$(echo $matchedTags | jq -r ".RELEASETYPE")"
@@ -620,7 +621,7 @@ ProcessWithBeets () {
 	fi
 	matchedLidarrAlbumArtistCleanName="$(echo "$matchedLidarrAlbumArtistName" | sed -e "s%[^[:alpha:][:digit:]._()' -]% %g" -e "s/  */ /g" | sed 's/^[.]*//' | sed  's/[.]*$//g' | sed  's/^ *//g' | sed 's/ *$//g')"
 
-	tidalAlbumFoldername="${matchedLidarrAlbumArtistCleanName}-${tidalAlbumTitleSanitized} ($matchedTagsAlbumYear)-FLAC-ATD"
+	tidalAlbumFoldername="${matchedLidarrAlbumArtistCleanName}-${matchedTagsAlbumTitleClean} ($matchedTagsAlbumYear)-FLAC-ATD"
 	
 	log "$position :: $idNumber of $idListCount :: $tidalId :: $matchedTagsAlbumReleaseGroupId"
 	
