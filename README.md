@@ -1,3 +1,11 @@
+# Deprecated
+
+This repository is now deprecated, will no longer be updated and is archived. Please visit the new project/replacement:
+* [https://github.com/RandomNinjaAtk/docker-lidarr-extended](https://github.com/RandomNinjaAtk/docker-lidarr-extended)
+
+<br />
+<br />
+
 # ATD - Automated Tidal Downloader
 [![Docker Build](https://img.shields.io/docker/cloud/automated/randomninjaatk/atd?style=flat-square)](https://hub.docker.com/r/randomninjaatk/atd)
 [![Docker Pulls](https://img.shields.io/docker/pulls/randomninjaatk/atd?style=flat-square)](https://hub.docker.com/r/randomninjaatk/atd)
